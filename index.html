@@ -1,0 +1,1850 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Heat Map</title>
+  <script src='https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js'></script>
+  <link href='https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css' rel='stylesheet' />
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
+    import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, increment } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
+    import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-storage.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBkM7yI938f1WBmNq4pgFyIv-dxSdegqT8",
+      authDomain: "voicemap01.firebaseapp.com",
+      projectId: "voicemap01",
+      storageBucket: "voicemap01.firebasestorage.app",
+      messagingSenderId: "1018275114159",
+      appId: "1:1018275114159:web:72121db60eaab90c31385a"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const storage = getStorage(app);
+
+    window._db = db;
+    window._storage = storage;
+    window._storageRef = ref;
+    window._uploadBytes = uploadBytes;
+    window._getDownloadURL = getDownloadURL;
+    window._fbCollection = collection;
+    window._fbAddDoc = addDoc;
+    window._fbGetDocs = getDocs;
+    window._fbDoc = doc;
+    window._fbUpdateDoc = updateDoc;
+    window._fbIncrement = increment;
+    console.log('Firebase ready!');
+  </script>
+
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; background: #0e0e0c; color: #e8e6df; }
+    #map { width: 100vw; height: 100vh; }
+    #ui {
+      position: fixed;
+      right: 28px;
+      left: auto;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      transition: right .45s ease, left .45s ease, transform .45s ease;
+    }
+    #ui.recording {
+      right: auto;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+    #record-wrap {
+      position: relative;
+      width: 140px;
+      height: 140px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: width .35s ease, height .35s ease;
+    }
+    #ui.recording #record-wrap { width: 190px; height: 190px; }
+    #record-canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+    #record-btn {
+      position: relative;
+      z-index: 2;
+      width: 84px; height: 84px;
+      border-radius: 50%;
+      border: 2px solid #e8e6df;
+      background: rgba(20,20,18,0.4);
+      color: #e8e6df;
+      font-size: 28px;
+      cursor: pointer;
+      transition: transform .2s ease, background .2s ease, border-color .2s ease;
+      backdrop-filter: blur(6px);
+    }
+    #record-btn:hover { transform: scale(1.18); background: rgba(255,255,255,0.14); }
+    #record-btn.recording { background: #E24B4A; border-color: #E24B4A; }
+    #status { font-size: 12px; color: #888780; text-align: center; max-width: 150px; }
+
+    /* LANDING ICONS */
+    .icon-el { display:none; font-size:38px; line-height:1; }
+    .icon-el.active { display:flex; align-items:center; justify-content:center; }
+
+    #icon-fingerprint.active { animation: pulse 1s ease-in-out infinite; }
+    @keyframes pulse { 0%,100%{transform:scale(1);opacity:.75} 50%{transform:scale(1.25);opacity:1} }
+
+    #icon-mouth.active { animation: mouthFlap .55s ease-in-out infinite; }
+    @keyframes mouthFlap { 0%,100%{transform:scaleY(1)} 50%{transform:scaleY(1.45)} }
+
+    #icon-globe.active { animation: spin 1.6s linear infinite; }
+    @keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+
+    .soundwave.active { display:flex; gap:4px; align-items:flex-end; height:38px; }
+    .soundwave span { width:6px; background:#e8e6df; border-radius:2px; animation: wave .8s ease-in-out infinite; }
+    .soundwave span:nth-child(1){animation-delay:0s;}
+    .soundwave span:nth-child(2){animation-delay:.1s;}
+    .soundwave span:nth-child(3){animation-delay:.2s;}
+    .soundwave span:nth-child(4){animation-delay:.3s;}
+    .soundwave span:nth-child(5){animation-delay:.4s;}
+    @keyframes wave { 0%,100%{height:8px} 50%{height:32px} }
+
+    #enter-btn:hover { background:rgba(255,255,255,0.08); }
+
+    /* ====================== LEFT HOVER NAV ====================== */
+    #side-menu {
+      position: fixed;
+      top: 0; left: 0;
+      height: 100vh;
+      width: 16px;
+      z-index: 40;
+      display: flex;
+      align-items: center;
+    }
+    #side-menu-handle {
+      position: absolute;
+      left: 0; top: 50%;
+      transform: translateY(-50%);
+      width: 5px; height: 56px;
+      border-radius: 0 6px 6px 0;
+      background: rgba(255,255,255,0.18);
+      transition: opacity .2s ease;
+    }
+    #side-menu:hover #side-menu-handle { opacity: 0; }
+    #side-menu-panel {
+      position: absolute;
+      left: 0; top: 50%;
+      transform: translate(-100%, -50%);
+      background: rgba(25,24,28,0.94);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-left: none;
+      border-radius: 0 14px 14px 0;
+      padding: 8px 0;
+      display: flex;
+      flex-direction: column;
+      min-width: 180px;
+      transition: transform .25s ease;
+      box-shadow: 6px 0 26px rgba(0,0,0,0.4);
+    }
+    #side-menu:hover #side-menu-panel { transform: translate(0, -50%); }
+    .side-menu-item {
+      background: transparent;
+      border: none;
+      color: #cfcdc6;
+      text-align: left;
+      padding: 12px 20px;
+      font-size: 13px;
+      font-family: system-ui, sans-serif;
+      cursor: pointer;
+      transition: background .15s, color .15s;
+    }
+    .side-menu-item:hover { background: rgba(255,255,255,0.07); color: #f2f0ea; }
+    .side-menu-item.active { color: #F5A623; font-weight: 600; }
+
+    .stub-view {
+      position: fixed; inset: 0; z-index: 30;
+      background: #0e0e0c;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 40px;
+      gap: 12px;
+    }
+    .stub-view.visible { display: flex; }
+    .stub-view h2 { font-size: 22px; font-weight: 600; color: #f2f0ea; }
+    .stub-view p { font-size: 14px; color: #cfcdc6; max-width: 380px; line-height: 1.6; }
+    .stub-close {
+      position: absolute; top: 24px; right: 24px;
+      width: 32px; height: 32px; border-radius: 50%;
+      border: 1px solid rgba(255,255,255,0.15);
+      background: rgba(255,255,255,0.05); color: #cfcdc6;
+      cursor: pointer; font-size: 14px;
+    }
+    .stub-close:hover { background: rgba(255,255,255,0.1); }
+
+    /* infinite starfield behind the archive content, same night-sky feel as the globe's fog/space */
+    .archive-stars {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      background-image:
+        radial-gradient(1.5px 1.5px at 10% 20%, rgba(255,255,255,0.7), transparent 100%),
+        radial-gradient(1px 1px at 25% 65%, rgba(255,255,255,0.5), transparent 100%),
+        radial-gradient(1.5px 1.5px at 40% 10%, rgba(255,255,255,0.6), transparent 100%),
+        radial-gradient(1px 1px at 55% 80%, rgba(255,255,255,0.4), transparent 100%),
+        radial-gradient(1.5px 1.5px at 70% 35%, rgba(255,255,255,0.65), transparent 100%),
+        radial-gradient(1px 1px at 85% 55%, rgba(255,255,255,0.45), transparent 100%),
+        radial-gradient(1.5px 1.5px at 95% 15%, rgba(255,255,255,0.55), transparent 100%),
+        radial-gradient(1px 1px at 15% 90%, rgba(255,255,255,0.4), transparent 100%),
+        radial-gradient(1.5px 1.5px at 60% 5%, rgba(255,255,255,0.6), transparent 100%),
+        radial-gradient(1px 1px at 5% 45%, rgba(255,255,255,0.5), transparent 100%);
+      background-repeat: repeat;
+      background-size: 340px 340px;
+    }
+    /* archive is a pannable "space", not a scrolling page — override the shared centered-stub layout */
+    #archive-view.visible { display: block; padding: 0; text-align: left; }
+
+    #archive-canvas-wrap {
+      position: absolute; inset: 0; z-index: 1;
+      overflow: hidden;
+      cursor: grab;
+      user-select: none;
+    }
+    #archive-canvas-wrap.grabbing { cursor: grabbing; }
+    #archive-canvas-origin { position: absolute; left: 50%; top: 50%; }
+    #archive-canvas { position: absolute; left: 0; top: 0; will-change: transform; }
+
+    .archive-group {
+      position: absolute;
+      left: 0; top: 0;
+      width: max-content;
+      max-width: 340px;
+      text-align: center;
+    }
+    .archive-group-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 8px;
+      opacity: 0.85;
+    }
+    .archive-group-lang { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; color: #f2f0ea; }
+    .archive-group-count { font-size: 10px; color: #8a8880; }
+    .archive-word-cloud {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      justify-content: center;
+      gap: 10px 16px;
+      padding: 8px 0;
+      cursor: pointer;
+    }
+    .archive-word {
+      display: inline-block;
+      font-weight: 700;
+      white-space: nowrap;
+      color: #fff;
+      pointer-events: none;
+      transition: transform .5s cubic-bezier(.2,.8,.2,1);
+      will-change: transform;
+    }
+    /* hovering a cluster "arranges" its scattered/rotated words back into a neat line */
+    .archive-word-cloud:hover .archive-word { transform: none !important; }
+    .archive-empty, .archive-loading {
+      position: fixed; inset: 0; z-index: 2;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; color: #8a8880; text-align: center; padding: 30px;
+      pointer-events: none;
+    }
+
+    /* floating filter toggle, same visual language as the record button */
+    #archive-filter-btn {
+      position: absolute; bottom: 28px; right: 28px; z-index: 3;
+      width: 56px; height: 56px; border-radius: 50%;
+      border: 2px solid #795DF7;
+      background: rgba(121,93,247,0.15);
+      backdrop-filter: blur(6px);
+      color: #e8e6df; font-size: 22px;
+      cursor: pointer;
+      transition: transform .2s ease, background .2s ease;
+    }
+    #archive-filter-btn:hover { transform: scale(1.1); background: rgba(121,93,247,0.3); }
+    #archive-filter-panel {
+      position: absolute; bottom: 96px; right: 28px; z-index: 3;
+      background: rgba(25,24,28,0.94);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px;
+      padding: 14px;
+      max-width: 240px;
+      display: none;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+    }
+    #archive-filter-panel.open { display: block; }
+    #archive-filters { display: flex; flex-wrap: wrap; gap: 8px; }
+    .archive-filter-chip {
+      padding: 6px 12px;
+      border-radius: 999px;
+      border: 1.5px solid #795DF7;
+      background: transparent;
+      color: #cfcdc6;
+      font-size: 10.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+      cursor: pointer;
+      transition: background .15s ease, color .15s ease, opacity .15s ease;
+      opacity: 0.55;
+    }
+    .archive-filter-chip.active { opacity: 1; background: #795DF7; color: #fff; }
+    .archive-filter-chip:hover { opacity: 1; }
+
+    /* cluster detail popup — glass card look, opened by clicking a cluster */
+    #archive-popup-overlay {
+      position: fixed; inset: 0; z-index: 50;
+      background: rgba(5,5,6,0.5);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    #archive-popup-overlay.visible { display: flex; }
+    .archive-popup {
+      position: relative;
+      width: 100%; max-width: 380px;
+      background: rgba(255,255,255,0.07);
+      backdrop-filter: blur(28px) saturate(150%);
+      -webkit-backdrop-filter: blur(28px) saturate(150%);
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 28px;
+      padding: 32px 28px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+      text-align: center;
+    }
+    .archive-popup-close {
+      position: absolute; top: 16px; right: 16px;
+      width: 28px; height: 28px; border-radius: 50%;
+      border: 1px solid rgba(255,255,255,0.15);
+      background: rgba(255,255,255,0.05); color: #cfcdc6;
+      cursor: pointer; font-size: 13px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .archive-popup-close:hover { background: rgba(255,255,255,0.12); }
+    .archive-popup-lang {
+      font-size: 20px; font-weight: 700; color: #fff;
+      text-transform: uppercase; letter-spacing: 0.02em;
+      margin-bottom: 4px;
+    }
+    .archive-popup-count { font-size: 12px; color: #a8a5ae; margin-bottom: 24px; }
+    .archive-popup-row {
+      display: flex; align-items: baseline; justify-content: center;
+      gap: 12px; padding: 12px 0;
+      border-top: 1px solid rgba(255,255,255,0.1);
+    }
+    .archive-popup-row:first-of-type { border-top: none; }
+    .archive-popup-pct { font-size: 22px; font-weight: 700; color: #795DF7; min-width: 56px; text-align: right; }
+    .archive-popup-word { font-size: 16px; font-weight: 600; color: #fff; text-transform: capitalize; }
+
+    /* ====================== MEMO MAP DOTS ====================== */
+    /* Mapbox positions the marker's ROOT element via its own inline transform — so the wrap here must
+       stay untouched by our CSS, and all animation/scaling happens on the inner .memo-dot instead.
+       (Putting our own transform on the root element fights Mapbox's positioning transform and the
+       dot visibly detaches from its true lat/lng.) */
+    .memo-dot-wrap {
+      position: relative;
+      cursor: pointer;
+    }
+    .memo-dot {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background: rgba(201,166,247,0.85);
+      transition: transform .25s ease, box-shadow .25s ease;
+    }
+    .memo-dot.fresh { animation: dotBreathe 2.2s ease-in-out infinite; }
+    .memo-dot.active {
+      transform: scale(1.6) translateY(-16px);
+      box-shadow: 0 14px 26px rgba(0,0,0,0.5);
+      z-index: 5;
+      animation: dotPulse 1s ease-in-out infinite;
+    }
+    /* vertical "stem" from the lifted dot back down to its ground point, for the 3D pop-up look */
+    .memo-dot.active::before {
+      content: '';
+      position: absolute;
+      left: 50%;
+      top: 100%;
+      width: 2px;
+      height: 20px;
+      background: linear-gradient(to bottom, rgba(201,166,247,0.9), rgba(201,166,247,0));
+      transform: translateX(-50%);
+    }
+    @keyframes dotBreathe {
+      0%,100% { transform: scale(1); box-shadow: 0 0 5px rgba(201,166,247,0.35); }
+      50% { transform: scale(1.45); box-shadow: 0 0 14px rgba(201,166,247,0.9); }
+    }
+    @keyframes dotPulse {
+      0%,100% { transform: scale(1.6) translateY(-16px); }
+      50% { transform: scale(1.9) translateY(-19px); }
+    }
+
+    /* ====================== MEMO POPUP CARD ====================== */
+    .mapboxgl-popup-content {
+      padding: 0 !important;
+      background: transparent !important;
+      box-shadow: none !important;
+      border-radius: 16px !important;
+    }
+    .mapboxgl-popup-tip { border-top-color: #19181c !important; border-bottom-color: #19181c !important; }
+    .mapboxgl-popup-close-button {
+      color: #cfcdc6; font-size: 16px; padding: 6px 10px; z-index: 2;
+    }
+    .mapboxgl-popup-close-button:hover { background: rgba(255,255,255,0.08); border-radius: 50%; }
+
+    .memo-card {
+      font-family: system-ui, sans-serif;
+      background: #19181c;
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 14px;
+      padding: 12px;
+      min-width: 220px;
+      color: #e8e6df;
+    }
+    .memo-username { font-size: 10.5px; color: #8a8880; margin-bottom: 6px; }
+    .memo-lang { font-size: 17px; font-weight: 700; color: #F5A623; letter-spacing: -0.01em; display: flex; align-items: baseline; gap: 6px; }
+    .memo-lang .memo-lang-pct { font-size: 12px; font-weight: 500; color: #cfcdc6; }
+    .memo-mix { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+    .memo-mix span { background: rgba(255,255,255,0.08); color: #cfcdc6; padding: 2px 7px; border-radius: 6px; font-size: 9.5px; font-weight: 500; }
+    .memo-divider { height: 1px; background: rgba(255,255,255,0.08); margin: 9px 0; }
+    .memo-predictions { display: flex; flex-direction: column; gap: 5px; }
+    .memo-pred-row { display: flex; align-items: baseline; gap: 8px; font-size: 12px; }
+    .memo-pred-pct { font-weight: 700; color: #F5A623; min-width: 30px; text-align: right; }
+    .memo-pred-label { color: #e0ddd5; }
+    .memo-audio-wrap { position: relative; width: 100%; height: 150px; border-radius: 12px; overflow: hidden; background: rgba(255,255,255,0.03); }
+    .memo-canvas { width: 100%; height: 100%; display: block; }
+    .memo-play-btn {
+      position: absolute; bottom: 8px; left: 8px; width: 30px; height: 30px; border-radius: 50%;
+      border: 1px solid rgba(255,255,255,0.2); background: rgba(10,10,10,0.55); color: #f2f0ea;
+      cursor: pointer; font-size: 11px; display: flex; align-items: center; justify-content: center;
+      backdrop-filter: blur(4px);
+    }
+    .memo-play-btn:hover { background: rgba(10,10,10,0.75); }
+    .memo-loading { font-size: 11px; color: #8a8880; margin-top: 4px; }
+    .memo-reactions-row { display: flex; gap: 4px; }
+    .memo-reactions-row button {
+      flex: 1; padding: 5px 2px; border-radius: 7px; border: 1px solid rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.03); color: #e8e6df; cursor: pointer; font-size: 11px;
+      transition: background .15s;
+    }
+    .memo-reactions-row button:hover { background: rgba(255,255,255,0.09); }
+  </style>
+</head>
+<body>
+
+<!-- LANDING / LOADING SCREEN -->
+<div id="landing" style="position:fixed;inset:0;background:#0e0e0c;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px;text-align:center;">
+  <div id="loading-sequence" style="display:flex;flex-direction:column;align-items:center;gap:14px;">
+    <div id="icon-stage" style="height:48px;display:flex;align-items:center;justify-content:center;">
+      <div class="icon-el active" id="icon-fingerprint">🫆</div>
+      <div class="icon-el" id="icon-mouth">👄</div>
+      <div class="icon-el" id="icon-globe">🌐</div>
+      <div class="icon-el" id="icon-flag">🇩🇪</div>
+      <div class="icon-el soundwave" id="icon-wave">
+        <span></span><span></span><span></span><span></span><span></span>
+      </div>
+    </div>
+    <p id="loading-text" style="font-size:13px;color:#888780;letter-spacing:0.02em;min-height:16px;transition:opacity .15s;">
+      Loading dumb assumptions...
+    </p>
+  </div>
+
+  <button id="enter-btn" style="display:none;padding:12px 32px;border-radius:99px;border:1.5px solid #e8e6df;background:transparent;color:#e8e6df;font-size:14px;font-weight:500;cursor:pointer;transition:opacity .5s, background .2s;opacity:0;">
+    Enter the map →
+  </button>
+</div>
+
+<!-- CONSENT / HOOK MODAL -->
+<div id="info-modal" style="position:fixed;inset:0;background:rgba(0,0,0,0.55);backdrop-filter:blur(6px);z-index:90;display:none;align-items:center;justify-content:center;padding:24px;">
+  <div style="position:relative;background:rgba(255,255,255,0.06);backdrop-filter:blur(24px) saturate(140%);-webkit-backdrop-filter:blur(24px) saturate(140%);border:1px solid rgba(255,255,255,0.12);border-radius:24px;max-width:380px;width:100%;padding:36px 28px;box-shadow:0 8px 40px rgba(0,0,0,0.5);text-align:center;">
+
+    <button id="info-x-btn" style="position:absolute;top:16px;right:16px;width:28px;height:28px;border-radius:50%;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.05);color:#cfcdc6;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
+
+    <p style="font-size:19px;font-weight:500;color:#f2f0ea;line-height:1.5;letter-spacing:-0.01em;margin-bottom:10px;">
+      Got a hot take? Say it. Any language, any mix.
+    </p>
+    <p style="font-size:15px;color:#cfcdc6;margin-bottom:28px;">
+      Every accent carries a verdict nobody asked for. Hear yours.
+    </p>
+
+    <button id="info-close-btn" style="width:100%;padding:12px;border-radius:14px;border:none;background:#e8e6df;color:#0e0e0c;font-size:14px;font-weight:500;cursor:pointer;margin-bottom:14px;">
+      Continue →
+    </button>
+
+    <p style="font-size:11px;color:#7d7b74;line-height:1.5;">
+      Public if you say so.
+    </p>
+  </div>
+</div>
+
+<!-- MAP -->
+<div id="map"></div>
+<div id="ui">
+  <div id="record-wrap">
+    <canvas id="record-canvas"></canvas>
+    <button id="record-btn">🎙</button>
+  </div>
+  <span id="status">share your hot take</span>
+</div>
+
+<!-- LEFT HOVER NAV -->
+<div id="side-menu">
+  <div id="side-menu-handle"></div>
+  <div id="side-menu-panel">
+    <button class="side-menu-item active" data-view="map">Map</button>
+    <button class="side-menu-item" data-view="archive">AI Archive</button>
+    <button class="side-menu-item" data-view="about">About the project</button>
+  </div>
+</div>
+
+<div id="archive-view" class="stub-view">
+  <div class="archive-stars"></div>
+  <button class="stub-close">✕</button>
+
+  <div id="archive-canvas-wrap">
+    <div id="archive-canvas-origin">
+      <div id="archive-canvas"></div>
+    </div>
+  </div>
+
+  <button id="archive-filter-btn">🎚</button>
+  <div id="archive-filter-panel">
+    <div id="archive-filters"></div>
+  </div>
+</div>
+
+<div id="archive-popup-overlay">
+  <div class="archive-popup">
+    <button class="archive-popup-close">✕</button>
+    <div id="archive-popup-content"></div>
+  </div>
+</div>
+
+<div id="about-view" class="stub-view">
+  <button class="stub-close">✕</button>
+  <h2>About the project</h2>
+  <p>Who Speaks AI? investigates how AI systems judge us by how we sound, not just what we say — voice, accent, and language mix treated as data the model never asked permission to interpret.</p>
+</div>
+
+<script>
+  /* ====================== LANDING SEQUENCE ====================== */
+  const ALL_STEPS = [
+    { text: 'Loading dumb assumptions...', icon: 'fingerprint' },
+    { text: 'Judging your accent...', icon: 'mouth' },
+    { text: 'Charging stupid worldviews...', icon: 'globe' },
+    { text: 'Consulting outdated biases...', icon: 'fingerprint' },
+    { text: 'Guessing your passport country...', icon: 'flag' },
+    { text: 'Training on vibes alone...', icon: 'wave' },
+    { text: 'Reticulating prejudice...', icon: 'globe' },
+    { text: 'Deciding if you sound "professional"...', icon: 'mouth' },
+  ];
+  const INTRO_DURATION = 5000;
+  const STEPS_PER_LOAD = 3;
+
+  function pickRandomSteps(pool, n) {
+    const copy = [...pool];
+    const picked = [];
+    for (let i = 0; i < n && copy.length; i++) {
+      picked.push(copy.splice(Math.floor(Math.random() * copy.length), 1)[0]);
+    }
+    return picked;
+  }
+
+  const steps = pickRandomSteps(ALL_STEPS, STEPS_PER_LOAD);
+  const flags = ['🇩🇪','🇪🇸','🇺🇸','🇯🇵','🇧🇷','🇮🇳','🇫🇷','🇳🇬'];
+  const stepDuration = INTRO_DURATION / steps.length;
+
+  const iconEls = {
+    fingerprint: document.getElementById('icon-fingerprint'),
+    mouth: document.getElementById('icon-mouth'),
+    globe: document.getElementById('icon-globe'),
+    flag: document.getElementById('icon-flag'),
+    wave: document.getElementById('icon-wave'),
+  };
+  const textEl = document.getElementById('loading-text');
+  let flagInterval = null;
+  let stepIndex = 0;
+
+  function showStep(i) {
+    Object.values(iconEls).forEach(el => el.classList.remove('active'));
+    if (flagInterval) { clearInterval(flagInterval); flagInterval = null; }
+
+    const step = steps[i];
+    textEl.style.opacity = '0';
+    setTimeout(() => {
+      textEl.textContent = step.text;
+      textEl.style.opacity = '1';
+    }, 150);
+
+    iconEls[step.icon].classList.add('active');
+
+    if (step.icon === 'flag') {
+      let fi = 0;
+      iconEls.flag.textContent = flags[fi];
+      flagInterval = setInterval(() => {
+        fi = (fi + 1) % flags.length;
+        iconEls.flag.textContent = flags[fi];
+      }, 350);
+    }
+  }
+
+  showStep(0);
+  const landingSeq = setInterval(() => {
+    stepIndex++;
+    if (stepIndex >= steps.length) {
+      clearInterval(landingSeq);
+      if (flagInterval) clearInterval(flagInterval);
+      document.getElementById('loading-sequence').style.display = 'none';
+      const enterBtn = document.getElementById('enter-btn');
+      enterBtn.style.display = 'inline-block';
+      requestAnimationFrame(() => { enterBtn.style.opacity = '1'; });
+      return;
+    }
+    showStep(stepIndex);
+  }, stepDuration);
+
+  /* ====================== LANDING -> MODAL -> MAP ====================== */
+  document.getElementById('enter-btn').addEventListener('click', () => {
+    const landing = document.getElementById('landing');
+    landing.style.transition = 'opacity .4s';
+    landing.style.opacity = '0';
+    setTimeout(() => {
+      landing.style.display = 'none';
+      document.getElementById('info-modal').style.display = 'flex';
+    }, 400);
+  });
+
+  function closeInfoModal() {
+    const modal = document.getElementById('info-modal');
+    modal.style.transition = 'opacity .3s';
+    modal.style.opacity = '0';
+    setTimeout(() => { modal.style.display = 'none'; }, 300);
+    spinGlobeIntro();
+  }
+
+  // Spins the globe on its own axis (advancing longitude), like the earth actually turning —
+  // NOT map.setBearing(), which just spins the camera in place around the same point.
+  function spinGlobeIntro(duration = 4000, degreesPerSecond = 22) {
+    const startCenter = map.getCenter();
+    const t0 = performance.now();
+    function tick(now) {
+      const elapsed = now - t0;
+      const lng = startCenter.lng - (elapsed / 1000) * degreesPerSecond;
+      map.jumpTo({ center: [lng, startCenter.lat] });
+      if (elapsed < duration) requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  }
+  document.getElementById('info-close-btn').addEventListener('click', closeInfoModal);
+  document.getElementById('info-x-btn').addEventListener('click', closeInfoModal);
+
+  /* ====================== LEFT HOVER NAV ====================== */
+  const sideMenuItems = document.querySelectorAll('.side-menu-item');
+  function setActiveView(view) {
+    sideMenuItems.forEach(i => i.classList.toggle('active', i.dataset.view === view));
+    document.getElementById('archive-view').classList.toggle('visible', view === 'archive');
+    document.getElementById('about-view').classList.toggle('visible', view === 'about');
+    if (view === 'archive') loadArchiveIfNeeded();
+  }
+  sideMenuItems.forEach(item => {
+    item.addEventListener('click', () => setActiveView(item.dataset.view));
+  });
+  document.querySelectorAll('.stub-close').forEach(btn => {
+    btn.addEventListener('click', () => setActiveView('map'));
+  });
+
+  /* ====================== AI ARCHIVE ====================== */
+  let archiveLoaded = false;
+  const ARCHIVE_STOPWORDS = new Set([
+    'the','a','an','of','in','on','for','to','and','with','your','you','is','are','it','this','that',
+    'be','as','at','by','or','but','from','has','have','not','no','so','if','was','were','will','just',
+    'out','up','all','who','what','when','their','its','into','than','then','over','why','how'
+  ]);
+
+  function tokenizeProfile(profile) {
+    if (!profile) return [];
+    return profile
+      .replace(/\d+%/g, ' ')
+      .toLowerCase()
+      .split(/[^a-zà-öø-ÿ']+/)
+      .filter(w => w.length > 2 && !ARCHIVE_STOPWORDS.has(w));
+  }
+
+  async function loadArchiveIfNeeded() {
+    resetArchivePan();
+    if (archiveLoaded) return;
+    const canvasEl = document.getElementById('archive-canvas');
+    canvasEl.innerHTML = '<div class="archive-loading">Gathering the evidence...</div>';
+    try {
+      const db = window._db;
+      const col = window._fbCollection;
+      const get = window._fbGetDocs;
+      if (!db) { canvasEl.innerHTML = '<div class="archive-empty">Firebase not ready.</div>'; return; }
+
+      const snapshot = await get(col(db, 'memos'));
+      const memos = [];
+      snapshot.forEach(doc => memos.push(doc.data()));
+
+      renderArchive(memos);
+      archiveLoaded = true;
+    } catch(e) {
+      console.error('Archive load error:', e);
+      canvasEl.innerHTML = '<div class="archive-empty">Could not load the archive.</div>';
+    }
+  }
+
+  let archiveGroups = {};
+  let archiveActiveLanguages = new Set();
+
+  // Places clusters outward along a golden-angle spiral so they never overlap and the "world" can
+  // keep growing outward as more languages show up — order is alphabetical (not count-based) so a
+  // given language always lands in the same spot rather than shuffling as counts change.
+  function archiveClusterPosition(order) {
+    const goldenAngle = 137.508 * Math.PI / 180;
+    const angle = order * goldenAngle;
+    const radius = 90 + order * 210;
+    return { x: Math.cos(angle) * radius, y: Math.sin(angle) * radius };
+  }
+
+  function renderArchive(memos) {
+    const canvasEl = document.getElementById('archive-canvas');
+    if (memos.length === 0) {
+      document.getElementById('archive-filters').innerHTML = '';
+      canvasEl.innerHTML = '<div class="archive-empty">No hot takes recorded yet — be the first.</div>';
+      return;
+    }
+
+    archiveGroups = {};
+    memos.forEach(m => {
+      const lang = ((m.languageMix && m.languageMix.primary) || m.language || 'unknown').toLowerCase();
+      if (!archiveGroups[lang]) archiveGroups[lang] = { count: 0, words: {} };
+      archiveGroups[lang].count++;
+      tokenizeProfile(m.profile).forEach(w => {
+        archiveGroups[lang].words[w] = (archiveGroups[lang].words[w] || 0) + 1;
+      });
+    });
+
+    archiveActiveLanguages = new Set(Object.keys(archiveGroups));
+    renderArchiveFilters();
+    renderArchiveGroups();
+  }
+
+  function renderArchiveFilters() {
+    const filtersEl = document.getElementById('archive-filters');
+    const langs = Object.keys(archiveGroups).sort();
+
+    filtersEl.innerHTML = langs.map(lang => {
+      return `<button class="archive-filter-chip active" data-lang="${lang}">${lang}</button>`;
+    }).join('');
+
+    filtersEl.querySelectorAll('.archive-filter-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const lang = chip.dataset.lang;
+        if (archiveActiveLanguages.has(lang)) archiveActiveLanguages.delete(lang);
+        else archiveActiveLanguages.add(lang);
+        chip.classList.toggle('active');
+        applyArchiveFilter();
+      });
+    });
+  }
+
+  // Builds every cluster once (fixed position, scatter computed once) — filtering afterwards only
+  // toggles visibility, so toggling a language chip doesn't re-shuffle everyone else's scatter.
+  function renderArchiveGroups() {
+    const canvasEl = document.getElementById('archive-canvas');
+    const langs = Object.keys(archiveGroups).sort();
+
+    canvasEl.innerHTML = langs.map((lang, order) => {
+      const g = archiveGroups[lang];
+      const wordEntries = Object.entries(g.words).sort((a, b) => b[1] - a[1]).slice(0, 24);
+      const maxCount = wordEntries.length ? wordEntries[0][1] : 1;
+      const pos = archiveClusterPosition(order);
+
+      const wordsHTML = wordEntries.map(([word, count]) => {
+        const scale = count / maxCount;
+        const fontSize = (12 + scale * 18).toFixed(1);
+        const alpha = (0.55 + scale * 0.45).toFixed(2);
+        // bigger/more frequent words stay closer to their neat position; smaller ones scatter more
+        const rot = ((Math.random() - 0.5) * (42 - scale * 26)).toFixed(1);
+        const tx = ((Math.random() - 0.5) * (30 - scale * 14)).toFixed(1);
+        const ty = ((Math.random() - 0.5) * (22 - scale * 10)).toFixed(1);
+        return `<span class="archive-word" style="font-size:${fontSize}px;color:rgba(255,255,255,${alpha});transform:translate(${tx}px,${ty}px) rotate(${rot}deg);">${word}</span>`;
+      }).join('');
+
+      return `
+        <div class="archive-group" data-lang="${lang}" style="transform: translate(calc(${pos.x}px - 50%), calc(${pos.y}px - 50%));">
+          <div class="archive-group-header">
+            <span class="archive-group-lang">${lang}</span>
+            <span class="archive-group-count">${g.count} memo${g.count === 1 ? '' : 's'}</span>
+          </div>
+          <div class="archive-word-cloud">${wordsHTML || '<span class="archive-empty">No predictions yet.</span>'}</div>
+        </div>
+      `;
+    }).join('');
+
+    applyArchiveFilter();
+  }
+
+  function applyArchiveFilter() {
+    document.querySelectorAll('.archive-group').forEach(el => {
+      el.style.display = archiveActiveLanguages.has(el.dataset.lang) ? '' : 'none';
+    });
+  }
+
+  /* ---- pan/drag the archive canvas (mouse + touch) ---- */
+  let archivePanX = 0, archivePanY = 0;
+  let archiveDragging = false, archiveDragStart = null, archivePanStart = null, archiveDidDrag = false;
+
+  function updateArchivePan() {
+    const canvasEl = document.getElementById('archive-canvas');
+    canvasEl.style.transform = `translate(${archivePanX}px, ${archivePanY}px)`;
+    const stars = document.querySelector('.archive-stars');
+    if (stars) stars.style.backgroundPosition = `${archivePanX * 0.3}px ${archivePanY * 0.3}px`;
+  }
+
+  function resetArchivePan() {
+    archivePanX = 0; archivePanY = 0;
+    updateArchivePan();
+  }
+
+  function archivePanBegin(x, y) {
+    archiveDragging = true;
+    archiveDidDrag = false;
+    archiveDragStart = { x, y };
+    archivePanStart = { x: archivePanX, y: archivePanY };
+    document.getElementById('archive-canvas-wrap').classList.add('grabbing');
+  }
+  function archivePanMove(x, y) {
+    if (!archiveDragging) return;
+    const dx = x - archiveDragStart.x, dy = y - archiveDragStart.y;
+    if (Math.abs(dx) > 5 || Math.abs(dy) > 5) archiveDidDrag = true;
+    archivePanX = archivePanStart.x + dx;
+    archivePanY = archivePanStart.y + dy;
+    updateArchivePan();
+  }
+  function archivePanEnd() {
+    archiveDragging = false;
+    document.getElementById('archive-canvas-wrap').classList.remove('grabbing');
+  }
+
+  function wireArchiveDrag() {
+    const wrap = document.getElementById('archive-canvas-wrap');
+    wrap.addEventListener('mousedown', e => archivePanBegin(e.clientX, e.clientY));
+    window.addEventListener('mousemove', e => archivePanMove(e.clientX, e.clientY));
+    window.addEventListener('mouseup', archivePanEnd);
+
+    wrap.addEventListener('touchstart', e => {
+      const t = e.touches[0];
+      archivePanBegin(t.clientX, t.clientY);
+    }, { passive: true });
+    wrap.addEventListener('touchmove', e => {
+      const t = e.touches[0];
+      archivePanMove(t.clientX, t.clientY);
+    }, { passive: true });
+    wrap.addEventListener('touchend', archivePanEnd);
+
+    wrap.addEventListener('click', e => {
+      if (archiveDidDrag) return;
+      const groupEl = e.target.closest('.archive-group');
+      if (groupEl) openArchivePopup(groupEl.dataset.lang);
+    });
+  }
+  wireArchiveDrag();
+
+  document.getElementById('archive-filter-btn').addEventListener('click', () => {
+    document.getElementById('archive-filter-panel').classList.toggle('open');
+  });
+
+  /* ---- cluster detail popup: top 3 words + their share of the cluster's vocabulary ---- */
+  function openArchivePopup(lang) {
+    const g = archiveGroups[lang];
+    if (!g) return;
+    const total = Object.values(g.words).reduce((s, c) => s + c, 0);
+    const top3 = Object.entries(g.words).sort((a, b) => b[1] - a[1]).slice(0, 3);
+
+    const rowsHTML = top3.map(([word, count]) => {
+      const pct = total ? Math.round((count / total) * 100) : 0;
+      return `
+        <div class="archive-popup-row">
+          <span class="archive-popup-pct">${pct}%</span>
+          <span class="archive-popup-word">${word}</span>
+        </div>
+      `;
+    }).join('') || '<div class="archive-popup-row"><span class="archive-popup-word">No predictions yet.</span></div>';
+
+    document.getElementById('archive-popup-content').innerHTML = `
+      <div class="archive-popup-lang">${lang}</div>
+      <div class="archive-popup-count">${g.count} memo${g.count === 1 ? '' : 's'}</div>
+      ${rowsHTML}
+    `;
+    document.getElementById('archive-popup-overlay').classList.add('visible');
+  }
+
+  function closeArchivePopup() {
+    document.getElementById('archive-popup-overlay').classList.remove('visible');
+  }
+
+  document.querySelector('.archive-popup-close').addEventListener('click', closeArchivePopup);
+  document.getElementById('archive-popup-overlay').addEventListener('click', e => {
+    if (e.target.id === 'archive-popup-overlay') closeArchivePopup();
+  });
+
+  /* ====================== MAP + KEYS ====================== */
+  const MAPBOX_TOKEN = 'pk.eyJ1IjoicmFmZmFzY2l1dG8iLCJhIjoiY21xNmI5NzY3MDd4dzJyc2tsczM3eGlqdCJ9.sjkRbqczQoE09vwvkB04Sw';
+
+  // Groq calls go through a Netlify Function so the API key never reaches the client.
+  async function callGroqProxy(endpoint, payload) {
+    const res = await fetch('/.netlify/functions/groq', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ endpoint, payload })
+    });
+    return res.json();
+  }
+
+  async function blobToBase64(blob) {
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    let binary = '';
+    for (let i = 0; i < bytes.length; i += 8192) {
+      binary += String.fromCharCode(...bytes.subarray(i, i + 8192));
+    }
+    return btoa(binary);
+  }
+
+  mapboxgl.accessToken = MAPBOX_TOKEN;
+  const map = new mapboxgl.Map({
+    container: 'map',
+    style: 'mapbox://styles/mapbox/dark-v11',
+    center: [10, 25],
+    zoom: 1.6,
+    projection: 'globe'
+  });
+
+  map.on('style.load', () => {
+    map.setFog({
+      color: 'rgb(30,29,26)',
+      'high-color': 'rgb(50,48,60)',
+      'horizon-blend': 0.03,
+      'space-color': 'rgb(5,5,6)',
+      'star-intensity': 0.25
+    });
+
+    // dark-v11 doesn't extrude buildings by default — without this, a pitched camera just tilts a
+    // flat plane and never reads as genuinely 3D. This draws real building volumes from the same
+    // vector tiles the style already loads.
+    const labelLayer = map.getStyle().layers.find(l => l.type === 'symbol' && l.layout && l.layout['text-field']);
+    map.addLayer({
+      id: '3d-buildings',
+      source: 'composite',
+      'source-layer': 'building',
+      filter: ['==', 'extrude', 'true'],
+      type: 'fill-extrusion',
+      minzoom: 13,
+      paint: {
+        'fill-extrusion-color': '#2e2c33',
+        'fill-extrusion-height': ['get', 'height'],
+        'fill-extrusion-base': ['get', 'min_height'],
+        'fill-extrusion-opacity': 0.8
+      }
+    }, labelLayer && labelLayer.id);
+
+    // Community dots render as a native GL circle layer, not DOM `Marker` elements. DOM markers are
+    // positioned by a separate JS-side screen-projection calculation that can fall out of sync with
+    // the globe's actual 3D rendering at low zoom — that mismatch is what was causing dots to drift
+    // into straight vertical lines instead of following the sphere. A GL layer is projected by the
+    // exact same renderer that draws the globe itself, so it can't desync.
+    map.addSource('memos', {
+      type: 'geojson',
+      data: { type: 'FeatureCollection', features: [] },
+      promoteId: 'docId'
+    });
+
+    map.addLayer({
+      id: 'memo-glow',
+      type: 'circle',
+      source: 'memos',
+      paint: {
+        'circle-radius': [
+          'case', ['boolean', ['feature-state', 'active'], false],
+          ['+', ['get', 'baseRadius'], 16, ['*', ['coalesce', ['feature-state', 'activePulse'], 0], 6]],
+          0
+        ],
+        'circle-color': '#F5A623',
+        'circle-blur': 0.85,
+        'circle-opacity': ['case', ['boolean', ['feature-state', 'active'], false], 0.65, 0]
+      }
+    });
+
+    map.addLayer({
+      id: 'memo-dots',
+      type: 'circle',
+      source: 'memos',
+      paint: {
+        'circle-radius': [
+          'case',
+          ['boolean', ['feature-state', 'active'], false],
+          ['+', ['*', ['get', 'baseRadius'], 1.7], ['*', ['coalesce', ['feature-state', 'activePulse'], 0], 2]],
+          ['get', 'fresh'],
+          ['+', ['get', 'baseRadius'], ['*', ['coalesce', ['feature-state', 'pulse'], 0], 3]],
+          ['get', 'baseRadius']
+        ],
+        'circle-color': ['case', ['boolean', ['feature-state', 'active'], false], '#F5A623', 'rgba(201,166,247,0.9)'],
+        'circle-stroke-width': ['case', ['boolean', ['feature-state', 'active'], false], 2, 0],
+        'circle-stroke-color': '#ffffff'
+      }
+    });
+
+    map.on('mouseenter', 'memo-dots', () => { map.getCanvas().style.cursor = 'pointer'; });
+    map.on('mouseleave', 'memo-dots', () => { map.getCanvas().style.cursor = ''; });
+    map.on('click', 'memo-dots', (e) => {
+      if (e.features && e.features[0]) openMemoPopup(e.features[0], e.lngLat);
+    });
+  });
+
+  map.on('load', () => {
+    setTimeout(loadFromFirebase, 1000);
+  });
+
+  /* ====================== FIREBASE ====================== */
+  async function saveToFirebase(location, language, languageMix, emotions, profile, blob, username) {
+    try {
+      const db = window._db;
+      const storage = window._storage;
+      if (!db || !storage) { console.log('Firebase not ready'); return; }
+
+      status.textContent = '💾 saving audio...';
+      const storageRef = window._storageRef;
+      const uploadBytes = window._uploadBytes;
+      const getDownloadURL = window._getDownloadURL;
+
+      const filename = `memos/${Date.now()}.webm`;
+      const audioRef = storageRef(storage, filename);
+      await uploadBytes(audioRef, blob);
+      const audioURL = await getDownloadURL(audioRef);
+      console.log('Audio uploaded:', audioURL);
+
+      const col = window._fbCollection;
+      const add = window._fbAddDoc;
+      const docRef = await add(col(db, 'memos'), {
+        username: username || 'Anonymous',
+        location: { lat: location[1], lng: location[0] },
+        language: language,
+        languageMix: languageMix || null,
+        emotions: emotions,
+        profile: profile,
+        audioURL: audioURL,
+        likes: 0,
+        dislikes: 0,
+        agrees: 0,
+        disagrees: 0,
+        timestamp: new Date().toISOString()
+      });
+      console.log('Saved to Firebase!');
+      return docRef.id;
+    } catch(e) {
+      console.error('Firebase save error:', e);
+      return null;
+    }
+  }
+
+  async function loadFromFirebase() {
+    try {
+      const db = window._db;
+      const col = window._fbCollection;
+      const get = window._fbGetDocs;
+      if (!db) return;
+
+      const snapshot = await get(col(db, 'memos'));
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        if (data.location) {
+          addMemoFeature({
+            location: [data.location.lng, data.location.lat],
+            language: data.language,
+            languageMix: data.languageMix,
+            profile: data.profile,
+            audioURL: data.audioURL || '',
+            username: data.username || 'Anonymous',
+            docId: doc.id,
+            likes: data.likes || 0,
+            dislikes: data.dislikes || 0,
+            agrees: data.agrees || 0,
+            disagrees: data.disagrees || 0,
+            timestamp: data.timestamp
+          });
+        }
+      });
+      console.log(`Loaded ${snapshot.size} memos from Firebase`);
+    } catch(e) {
+      console.error('Firebase load error:', e);
+    }
+  }
+
+  const FRESH_MEMO_MS = 60 * 60 * 1000;
+  let memoFeatureCollection = { type: 'FeatureCollection', features: [] };
+  let memoLocalCounter = 0;
+  const freshPulseIds = new Set();
+  let activeId = null;
+  let pulseRafId = null;
+
+  function addMemoFeature({ location, language, languageMix, profile, audioURL, username, docId, likes, dislikes, agrees, disagrees, timestamp }) {
+    const interactions = (likes || 0) + (dislikes || 0) + (agrees || 0) + (disagrees || 0);
+    const baseRadius = Math.min(9, 4.5 + interactions * 0.4);
+    const isFresh = !!(timestamp && (Date.now() - new Date(timestamp).getTime() < FRESH_MEMO_MS));
+    const id = docId || `local-${++memoLocalCounter}`;
+
+    // No explicit top-level `id` here — the source's `promoteId: 'docId'` derives the feature-state
+    // key from this property instead, so setting both would be redundant and risks disagreeing.
+    const feature = {
+      type: 'Feature',
+      geometry: { type: 'Point', coordinates: location },
+      properties: {
+        docId: id,
+        language: language || '',
+        languageMix: JSON.stringify(languageMix || null),
+        profile: profile || '',
+        audioURL: audioURL || '',
+        username: username || '',
+        likes: likes || 0, dislikes: dislikes || 0, agrees: agrees || 0, disagrees: disagrees || 0,
+        baseRadius,
+        fresh: isFresh
+      }
+    };
+
+    const idx = memoFeatureCollection.features.findIndex(f => f.properties.docId === id);
+    if (idx >= 0) memoFeatureCollection.features[idx] = feature;
+    else memoFeatureCollection.features.push(feature);
+
+    const source = map.getSource('memos');
+    if (source) source.setData(memoFeatureCollection);
+
+    if (isFresh) {
+      freshPulseIds.add(id);
+      if (!pulseRafId) pulseLoop();
+    }
+    return id;
+  }
+
+  function pulseLoop() {
+    const t = performance.now() / 1000;
+    const freshOsc = 0.5 + 0.5 * Math.sin(t * 2.4);
+    freshPulseIds.forEach(id => {
+      map.setFeatureState({ source: 'memos', id }, { pulse: freshOsc });
+    });
+    if (activeId) {
+      const activeOsc = 0.5 + 0.5 * Math.sin(t * 3.2);
+      map.setFeatureState({ source: 'memos', id: activeId }, { active: true, activePulse: activeOsc });
+    }
+    if (freshPulseIds.size || activeId) {
+      pulseRafId = requestAnimationFrame(pulseLoop);
+    } else {
+      pulseRafId = null;
+    }
+  }
+
+  function openMemoPopup(feature, lngLat) {
+    const p = feature.properties;
+    const languageMix = p.languageMix ? JSON.parse(p.languageMix) : null;
+    const popup = new mapboxgl.Popup({ offset: 10, maxWidth: '280px' })
+      .setLngLat(lngLat)
+      .setHTML(popupHTML({
+        audioURL: p.audioURL, language: p.language, languageMix,
+        profile: p.profile, username: p.username, docId: p.docId,
+        likes: p.likes, dislikes: p.dislikes, agrees: p.agrees, disagrees: p.disagrees
+      }))
+      .addTo(map);
+    mountMemoCanvas(popup, p.docId || p.audioURL, languageMix ? languageMix.primary : p.language);
+
+    activeId = p.docId;
+    map.setFeatureState({ source: 'memos', id: activeId }, { active: true });
+    if (!pulseRafId) pulseLoop();
+
+    popup.on('close', () => {
+      map.setFeatureState({ source: 'memos', id: activeId }, { active: false, activePulse: 0 });
+      activeId = null;
+    });
+  }
+
+  /* ====================== RECORD BUTTON — LIVE MIC-REACTIVE VISUAL ====================== */
+  let recordAudioCtx = null, recordAnalyser = null, recordSource = null, recordRafId = null;
+
+  // Fixed logical size (matches the CSS "recording" enlarged size) so the buffer stays crisp
+  // whether the canvas is currently shown small (idle) or large (recording) via CSS scaling.
+  const RECORD_CANVAS_SIZE = 190;
+
+  function startRecordVisual() {
+    const canvas = document.getElementById('record-canvas');
+    const dpr = window.devicePixelRatio || 1;
+    const size = RECORD_CANVAS_SIZE;
+    canvas.width = size * dpr;
+    canvas.height = size * dpr;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+
+    recordAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    recordSource = recordAudioCtx.createMediaStreamSource(mediaStream);
+    recordAnalyser = recordAudioCtx.createAnalyser();
+    recordAnalyser.fftSize = 256;
+    recordSource.connect(recordAnalyser); // analysis only — not connected to destination, so no mic feedback
+
+    const cx = size / 2, cy = size / 2, maxR = size / 2 - 6;
+    const cols = 11, rows = 11;
+    const cellW = (maxR * 2) / cols, cellH = (maxR * 2) / rows;
+    const cells = [];
+    for (let j = 0; j < rows; j++) {
+      for (let i = 0; i < cols; i++) {
+        const px = -maxR + (i + 0.5) * cellW;
+        const py = -maxR + (j + 0.5) * cellH;
+        const dist = Math.sqrt(px * px + py * py) / maxR;
+        const mask = Math.max(0, 1 - dist * 1.05);
+        if (mask > 0.08) cells.push({ x: cx + px, y: cy + py, base: mask, col: i });
+      }
+    }
+
+    const data = new Uint8Array(recordAnalyser.frequencyBinCount);
+    function draw() {
+      recordAnalyser.getByteFrequencyData(data);
+      ctx.clearRect(0, 0, size, size);
+      cells.forEach(c => {
+        const amp = data[Math.floor((c.col / cols) * data.length)] / 255;
+        const r = c.base * (1.6 + amp * 6);
+        const alpha = Math.min(1, 0.3 + c.base * 0.5 + amp * 0.45);
+        ctx.beginPath();
+        ctx.fillStyle = `rgba(226,75,74,${alpha})`;
+        ctx.arc(c.x, c.y, r, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      recordRafId = requestAnimationFrame(draw);
+    }
+    draw();
+  }
+
+  function stopRecordVisual() {
+    if (recordRafId) cancelAnimationFrame(recordRafId);
+    recordRafId = null;
+    if (recordAudioCtx) { recordAudioCtx.close(); recordAudioCtx = null; }
+    const canvas = document.getElementById('record-canvas');
+    canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+  }
+
+  /* ====================== RECORD (segmentos para idioma + grabación continua para reproducción) ====================== */
+  const btn    = document.getElementById('record-btn');
+  const status = document.getElementById('status');
+  let recording = false;
+  let userLocation = [13.405, 52.52];
+  let mediaStream = null;
+  let currentRecorder = null;
+  let segmentBlobs = [];
+  let segmentTimer = null;
+  const SEGMENT_MS = 4000;
+
+  // Segmented recorder: independent 4s WebM files, used only for per-segment language detection.
+  function recordOneSegment() {
+    if (!recording || !mediaStream) return;
+    currentRecorder = new MediaRecorder(mediaStream, { mimeType: 'audio/webm' });
+    let segChunks = [];
+    currentRecorder.ondataavailable = e => segChunks.push(e.data);
+    currentRecorder.onstop = () => {
+      const segBlob = new Blob(segChunks, { type: 'audio/webm' });
+      if (segBlob.size > 500) segmentBlobs.push(segBlob);
+      if (recording) {
+        recordOneSegment();
+      } else {
+        finalizeRecording();
+      }
+    };
+    currentRecorder.start();
+    segmentTimer = setTimeout(() => {
+      if (currentRecorder && currentRecorder.state === 'recording') {
+        currentRecorder.stop();
+      }
+    }, SEGMENT_MS);
+  }
+
+  // Continuous recorder: one uninterrupted encoding session, used for full-length playback.
+  // (Stitching independent segment files back-to-back produces an invalid file after the first
+  // segment's header — this second recorder is what keeps full playback intact.)
+  let continuousRecorder = null;
+  let continuousChunks = [];
+
+  function startContinuousRecorder() {
+    continuousChunks = [];
+    continuousRecorder = new MediaRecorder(mediaStream, { mimeType: 'audio/webm' });
+    continuousRecorder.ondataavailable = e => { if (e.data.size > 0) continuousChunks.push(e.data); };
+    continuousRecorder.start();
+  }
+
+  function stopContinuousRecorder() {
+    return new Promise(resolve => {
+      if (!continuousRecorder || continuousRecorder.state === 'inactive') {
+        resolve(new Blob(continuousChunks, { type: 'audio/webm' }));
+        return;
+      }
+      continuousRecorder.onstop = () => resolve(new Blob(continuousChunks, { type: 'audio/webm' }));
+      continuousRecorder.stop();
+    });
+  }
+
+  async function finalizeRecording() {
+    const fullBlob = await stopContinuousRecorder();
+    mediaStream.getTracks().forEach(t => t.stop());
+    const loc = await window._locationPromise;
+    userLocation = loc;
+    await runPipeline(fullBlob, userLocation, segmentBlobs);
+  }
+
+  btn.addEventListener('click', async () => {
+    if (!recording) {
+      window._locationPromise = new Promise((resolve) => {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => resolve([pos.coords.longitude, pos.coords.latitude]),
+          () => resolve([13.405, 52.52]),
+          { timeout: 5000 }
+        );
+      });
+      window._locationPromise.then(loc => {
+        userLocation = loc;
+        map.flyTo({ center: loc, zoom: 13, pitch: 55, duration: 2500 });
+      });
+
+      mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      segmentBlobs = [];
+      recording = true;
+      btn.classList.add('recording');
+      document.getElementById('ui').classList.add('recording');
+      btn.textContent = '⏹';
+      status.textContent = 'recording...';
+      startContinuousRecorder();
+      recordOneSegment();
+      startRecordVisual();
+
+    } else {
+      recording = false;
+      clearTimeout(segmentTimer);
+      if (currentRecorder && currentRecorder.state === 'recording') {
+        currentRecorder.stop();
+      }
+      btn.classList.remove('recording');
+      document.getElementById('ui').classList.remove('recording');
+      btn.textContent = '🎙';
+      status.textContent = 'analyzing...';
+      stopRecordVisual();
+    }
+  });
+
+  function normalizeProfile(text) {
+    const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+    const parsed = lines.map(line => {
+      const match = line.match(/^(\d+)%\s*(.*)$/);
+      return match ? { pct: parseInt(match[1], 10), label: match[2] } : null;
+    }).filter(Boolean);
+
+    if (parsed.length === 0) return text;
+
+    const total = parsed.reduce((s, p) => s + p.pct, 0);
+    if (total === 0) return text;
+
+    let scaled = parsed.map(p => ({ label: p.label, pct: Math.round(p.pct / total * 100) }));
+    let sum = scaled.reduce((s, p) => s + p.pct, 0);
+    scaled[0].pct += (100 - sum);
+
+    return scaled.map(p => `${p.pct}% ${p.label}`).join('\n');
+  }
+
+  function generateRandomUsername() {
+    const adjectives = ['Mysterious','Loud','Silent','Curious','Wandering','Sleepy','Chaotic','Gentle','Bold','Foreign'];
+    const nouns = ['Voice','Accent','Whisper','Tongue','Echo','Stranger','Wanderer','Listener','Speaker','Visitor'];
+    const num = Math.floor(Math.random() * 900 + 100);
+    const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
+    const noun = nouns[Math.floor(Math.random() * nouns.length)];
+    return `${adj}${noun}${num}`;
+  }
+
+ async function runPipeline(blob, location, segmentBlobs) {
+    const audioURL = URL.createObjectURL(blob);
+
+    const popup = new mapboxgl.Popup({ offset: 10, maxWidth: '280px' });
+    const wrap = document.createElement('div');
+    wrap.className = 'memo-dot-wrap';
+    wrap.style.width = '13px';
+    wrap.style.height = '13px';
+    const el = document.createElement('div');
+    el.className = 'memo-dot';
+    el.style.background = '#F5A623';
+    wrap.appendChild(el);
+    const marker = new mapboxgl.Marker(wrap).setLngLat(location).setPopup(popup).addTo(map);
+    popup.on('open', () => el.classList.add('active'));
+    popup.on('close', () => el.classList.remove('active'));
+    popup.setHTML(popupHTML({ audioURL, language: '...', loading: '🧠 analyzing...' }));
+    mountMemoCanvas(popup, audioURL, '...');
+    marker.togglePopup();
+
+    try {
+      status.textContent = '🌐 detecting language...';
+      const { language, text, languageMix } = await detectLanguageFromSegments(segmentBlobs);
+      console.log('Language:', language, '| Mix:', languageMix);
+      popup.setHTML(popupHTML({ audioURL, language, languageMix, loading: '🧠 analyzing emotions...' }));
+      mountMemoCanvas(popup, audioURL, language);
+      await new Promise(r => setTimeout(r, 800));
+
+      status.textContent = '🧠 analyzing emotions...';
+      const emotions = await analyzeEmotions(blob);
+      console.log('Emotions:', emotions);
+      await new Promise(r => setTimeout(r, 800));
+
+      status.textContent = '🎭 generating profile...';
+      let profile = await generateProfile(language, emotions, languageMix, text);
+      profile = normalizeProfile(profile);
+      console.log('Profile:', profile);
+      await new Promise(r => setTimeout(r, 400));
+
+      let langDisplay = language ? language.toUpperCase() : '...';
+      let pctDisplay = languageMix ? `${languageMix.primaryPct}%` : '100%';
+      let mixDisplay = '';
+      if (languageMix && languageMix.mix && languageMix.mix.length > 0) {
+        langDisplay = languageMix.primary.toUpperCase();
+        mixDisplay = languageMix.mix.map(m => `<span>${m.language} ${m.pct}%</span>`).join('');
+      }
+
+      popup.setHTML(`
+        <div class="memo-card">
+          <div class="memo-lang">🌐 ${langDisplay}<span class="memo-lang-pct">${pctDisplay}</span></div>
+          ${mixDisplay ? `<div class="memo-mix">${mixDisplay}</div>` : ''}
+          <div class="memo-divider"></div>
+          ${parsePredictionRows(profile)}
+          <div class="memo-divider"></div>
+          <div class="memo-audio-wrap">
+            <canvas class="memo-canvas"></canvas>
+            <button class="memo-play-btn">▶</button>
+          </div>
+          <audio class="memo-audio-el" src="${audioURL}" style="display:none;"></audio>
+          <div class="memo-divider"></div>
+          <input id="username-input" type="text" value="${generateRandomUsername()}" placeholder="Choose a name (optional)" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.03);color:#e8e6df;font-size:12px;box-sizing:border-box;margin-bottom:8px;">
+          <div style="font-size:11px;color:#8a8880;margin-bottom:8px;">Add your hot take to the map?</div>
+          <div style="display:flex;gap:8px;">
+            <button onclick="publishMemo()" style="flex:1;padding:8px;border-radius:8px;border:none;background:#F5A623;color:#19181c;font-weight:600;cursor:pointer;font-size:12px;">
+              Publish 🌍
+            </button>
+            <button onclick="deleteMemo()" style="flex:1;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#cfcdc6;cursor:pointer;font-size:12px;">
+              Delete
+            </button>
+          </div>
+        </div>
+      `);
+      mountMemoCanvas(popup, audioURL, language);
+      status.textContent = 'share your hot take';
+
+      window.publishMemo = async () => {
+        const usernameInput = document.getElementById('username-input');
+        const username = (usernameInput && usernameInput.value.trim()) || generateRandomUsername();
+
+        popup.setHTML(`
+          <div class="memo-card" style="text-align:center;color:#8a8880;">
+            💾 saving...
+          </div>
+        `);
+        const docId = await saveToFirebase(location, language, languageMix, emotions, profile, blob, username);
+        popup.setHTML(popupHTML({ audioURL, language, languageMix, profile, username, docId }));
+        mountMemoCanvas(popup, docId || audioURL, language);
+        el.style.background = 'rgba(201,166,247,0.85)';
+        wrap.style.width = '11px';
+        wrap.style.height = '11px';
+        el.classList.add('fresh');
+      };
+
+      window.deleteMemo = () => {
+        marker.remove();
+        status.textContent = 'share your hot take';
+      };
+
+    } catch(e) {
+      console.error('Pipeline error:', e);
+      popup.setHTML(popupHTML({ audioURL, language: 'unknown', profile: '40% unclassifiable chaos\n35% Späti regular\n25% accidental philosopher' }));
+      mountMemoCanvas(popup, audioURL, 'unknown');
+      status.textContent = 'share your hot take';
+    }
+  }
+  
+  /* ====================== AUDIO-REACTIVE PIXEL CARD ====================== */
+  function hashStringToInt(str) {
+    let h = 0;
+    for (let i = 0; i < str.length; i++) { h = (h * 31 + str.charCodeAt(i)) | 0; }
+    return Math.abs(h);
+  }
+
+  function mulberry32(seed) {
+    let a = seed;
+    return function() {
+      a |= 0; a = (a + 0x6D2B79F5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  function languageToHue(language) {
+    return hashStringToInt(language || 'unknown') % 360;
+  }
+
+  function setupCanvasPattern(canvas, seedStr, language) {
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return;
+    canvas.width = Math.max(1, Math.round(rect.width * dpr));
+    canvas.height = Math.max(1, Math.round(rect.height * dpr));
+    const ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+
+    const cols = 20, rows = 10;
+    const rand = mulberry32(hashStringToInt(seedStr || 'memo'));
+    const cellW = rect.width / cols;
+    const cellH = rect.height / rows;
+    const cells = [];
+    for (let j = 0; j < rows; j++) {
+      for (let i = 0; i < cols; i++) {
+        const nx = i / (cols - 1) - 0.5;
+        const ny = j / (rows - 1) - 0.5;
+        const dist = Math.sqrt(nx * nx * 3.2 + ny * ny * 5.5);
+        const noise = (rand() - 0.5) * 0.6;
+        const mask = Math.max(0, Math.min(1, 1 - dist * 1.5 + noise));
+        if (mask > 0.05) {
+          cells.push({ x: (i + 0.5) * cellW, y: (j + 0.5) * cellH, base: mask, col: i });
+        }
+      }
+    }
+    const hue = languageToHue(language);
+
+    function draw(amps) {
+      ctx.clearRect(0, 0, rect.width, rect.height);
+      cells.forEach(c => {
+        const amp = amps ? amps[c.col] : 0.25;
+        const size = c.base * (2.5 + amp * 11);
+        const alpha = Math.min(1, 0.3 + c.base * 0.45 + amp * 0.4);
+        ctx.beginPath();
+        ctx.fillStyle = `hsla(${hue}, 75%, 62%, ${alpha})`;
+        ctx.arc(c.x, c.y, size, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    }
+    draw(null);
+    canvas._memoDraw = draw;
+    canvas._memoCols = cols;
+  }
+
+  function wireMemoPlayback(canvas, audio, btn) {
+    if (!canvas || !audio || !btn) return;
+    // Remote (Firebase Storage) URLs are cross-origin: routing them through a MediaElementSource +
+    // AnalyserNode makes Chrome silently output zeroes (no sound, no error) unless the bucket has CORS
+    // configured. Only blob: URLs (the local in-session recording) are safe to route through Web Audio —
+    // everything else just plays natively and gets a simulated reactive animation instead of a real one.
+    const isLocal = audio.src.startsWith('blob:');
+    let audioCtx, analyser, source, rafId;
+
+    function stopVisual() {
+      if (rafId) cancelAnimationFrame(rafId);
+      rafId = null;
+      if (canvas._memoDraw) canvas._memoDraw(null);
+      btn.textContent = '▶';
+    }
+
+    function loopReal() {
+      if (!analyser) return;
+      const data = new Uint8Array(analyser.frequencyBinCount);
+      analyser.getByteFrequencyData(data);
+      const cols = canvas._memoCols || 20;
+      const amps = [];
+      for (let c = 0; c < cols; c++) {
+        amps.push(data[Math.floor((c / cols) * data.length)] / 255);
+      }
+      if (canvas._memoDraw) canvas._memoDraw(amps);
+      rafId = requestAnimationFrame(loopReal);
+    }
+
+    function loopFake(t0) {
+      const cols = canvas._memoCols || 20;
+      function frame(now) {
+        const t = now - t0;
+        const amps = [];
+        for (let c = 0; c < cols; c++) {
+          amps.push(0.35 + 0.35 * Math.abs(Math.sin(t / 260 + c * 0.7)));
+        }
+        if (canvas._memoDraw) canvas._memoDraw(amps);
+        rafId = requestAnimationFrame(frame);
+      }
+      rafId = requestAnimationFrame(frame);
+    }
+
+    btn.addEventListener('click', async () => {
+      if (audio.paused) {
+        if (isLocal) {
+          if (!audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            source = audioCtx.createMediaElementSource(audio);
+            analyser = audioCtx.createAnalyser();
+            analyser.fftSize = 64;
+            source.connect(analyser);
+            analyser.connect(audioCtx.destination);
+          }
+          if (audioCtx.state === 'suspended') await audioCtx.resume();
+        }
+        await audio.play();
+        btn.textContent = '⏸';
+        if (isLocal) loopReal(); else loopFake(performance.now());
+      } else {
+        audio.pause();
+      }
+    });
+
+    audio.addEventListener('pause', stopVisual);
+    audio.addEventListener('ended', () => { audio.currentTime = 0; stopVisual(); });
+  }
+
+  function mountMemoCanvas(popup, seedStr, language) {
+    const tryMount = () => {
+      const el = popup.getElement && popup.getElement();
+      if (!el) return false;
+      const canvas = el.querySelector('.memo-canvas');
+      if (!canvas || canvas.dataset.inited) return true;
+      canvas.dataset.inited = '1';
+      setupCanvasPattern(canvas, seedStr, language);
+      wireMemoPlayback(canvas, el.querySelector('.memo-audio-el'), el.querySelector('.memo-play-btn'));
+      return true;
+    };
+    if (!tryMount()) popup.once('open', tryMount);
+  }
+
+  function parsePredictionRows(profile) {
+    if (!profile) return '';
+    const lines = profile.split('\n').map(l => l.trim()).filter(Boolean);
+    const rows = lines.map(line => {
+      const match = line.match(/^(\d+)%\s*(.*)$/);
+      if (!match) return `<div class="memo-pred-row"><span class="memo-pred-label">${line}</span></div>`;
+      return `<div class="memo-pred-row"><span class="memo-pred-pct">${match[1]}%</span><span class="memo-pred-label">${match[2]}</span></div>`;
+    }).join('');
+    return `<div class="memo-predictions">${rows}</div>`;
+  }
+
+  function popupHTML({ audioURL, language, loading, profile, languageMix, username, docId, likes = 0, dislikes = 0, agrees = 0, disagrees = 0 }) {
+    let langDisplay = language ? language.toUpperCase() : '...';
+    let pctDisplay = '';
+    let mixDisplay = '';
+
+    if (languageMix && languageMix.mix && languageMix.mix.length > 0) {
+      langDisplay = languageMix.primary.toUpperCase();
+      pctDisplay = `${languageMix.primaryPct}%`;
+      mixDisplay = languageMix.mix
+        .map(m => `<span>${m.language} ${m.pct}%</span>`)
+        .join('');
+    } else if (language) {
+      pctDisplay = '100%';
+    }
+
+    const reactionsHTML = docId ? `
+      <div class="memo-divider"></div>
+      <div class="memo-reactions-row">
+        <button onclick="reactToMemo('${docId}','likes')">👍 <span id="likes-${docId}">${likes}</span></button>
+        <button onclick="reactToMemo('${docId}','dislikes')">👎 <span id="dislikes-${docId}">${dislikes}</span></button>
+        <button onclick="reactToMemo('${docId}','agrees')">✅ <span id="agrees-${docId}">${agrees}</span></button>
+        <button onclick="reactToMemo('${docId}','disagrees')">❌ <span id="disagrees-${docId}">${disagrees}</span></button>
+      </div>` : '';
+
+    return `
+      <div class="memo-card">
+        ${username ? `<div class="memo-username">👤 ${username}</div>` : ''}
+        <div class="memo-lang">🌐 ${langDisplay}${pctDisplay ? `<span class="memo-lang-pct">${pctDisplay}</span>` : ''}</div>
+        ${mixDisplay ? `<div class="memo-mix">${mixDisplay}</div>` : ''}
+        <div class="memo-divider"></div>
+        ${parsePredictionRows(profile)}
+        ${loading ? `<div class="memo-loading">${loading}</div>` : ''}
+        <div class="memo-divider"></div>
+        <div class="memo-audio-wrap">
+          <canvas class="memo-canvas"></canvas>
+          <button class="memo-play-btn">▶</button>
+        </div>
+        <audio class="memo-audio-el" src="${audioURL}" style="display:none;"></audio>
+        ${reactionsHTML}
+      </div>`;
+  }
+
+  window.reactToMemo = async (docId, field) => {
+    const span = document.getElementById(`${field}-${docId}`);
+    if (!span) return;
+    const current = parseInt(span.textContent, 10) || 0;
+    span.textContent = current + 1;
+    try {
+      const db = window._db;
+      await window._fbUpdateDoc(window._fbDoc(db, 'memos', docId), { [field]: window._fbIncrement(1) });
+    } catch(e) {
+      console.error('Reaction update error:', e);
+      span.textContent = current;
+    }
+  };
+  /* ====================== STEP 1 — GROQ WHISPER ====================== */
+  /* ====================== DETECCIÓN POR SEGMENTOS REALES ====================== */
+  async function detectLanguageFromSegments(segmentBlobs) {
+    const results = [];
+
+    for (const segBlob of segmentBlobs) {
+      if (segBlob.size < 1000) continue;
+      try {
+        const audioBase64 = await blobToBase64(segBlob);
+        const data = await callGroqProxy('transcriptions', {
+          audioBase64,
+          filename: 'segment.webm',
+          model: 'whisper-large-v3',
+          response_format: 'verbose_json'
+        });
+        const lang = data.language || 'unknown';
+        const txt = data.text || '';
+        if (txt.trim()) {
+          results.push({ language: lang, text: txt });
+          console.log('Segmento:', lang, '|', txt);
+        }
+      } catch(e) {
+        console.log('Segment error:', e);
+      }
+    }
+
+    if (results.length === 0) {
+      return { language: 'unknown', text: '', languageMix: { primary: 'unknown', primaryPct: 100, mix: [] } };
+    }
+
+    const counts = {};
+    results.forEach(r => { counts[r.language] = (counts[r.language] || 0) + 1; });
+    const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+    const total = results.length;
+    const primary = sorted[0][0];
+    const primaryPct = Math.round(sorted[0][1] / total * 100);
+    const mix = sorted.slice(1).map(([lang, count]) => ({
+      language: lang,
+      pct: Math.round(count / total * 100)
+    }));
+
+    const fullText = results.map(r => r.text).join(' ');
+
+    return {
+      language: primary,
+      text: fullText,
+      languageMix: { primary, primaryPct, mix }
+    };
+  }
+
+async function analyzeEmotions(blob) {
+    try {
+      const arrayBuffer = await blob.arrayBuffer();
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer.slice(0));
+      const channelData = audioBuffer.getChannelData(0);
+
+      // Volumen (RMS)
+      let sumSquares = 0;
+      for (let i = 0; i < channelData.length; i++) sumSquares += channelData[i] * channelData[i];
+      const rms = Math.sqrt(sumSquares / channelData.length);
+
+      // "Ruido" / tensión (zero-crossing rate)
+      let crossings = 0;
+      for (let i = 1; i < channelData.length; i++) {
+        if ((channelData[i-1] >= 0) !== (channelData[i] >= 0)) crossings++;
+      }
+      const zcr = crossings / channelData.length;
+
+      // Variabilidad / expresividad (energía por frames de 50ms)
+      const frameSize = Math.floor(audioBuffer.sampleRate * 0.05);
+      let frameRMS = [];
+      for (let i = 0; i < channelData.length; i += frameSize) {
+        let s = 0, n = 0;
+        for (let j = i; j < Math.min(i + frameSize, channelData.length); j++) { s += channelData[j] * channelData[j]; n++; }
+        frameRMS.push(Math.sqrt(s / n));
+      }
+      const meanFrameRMS = frameRMS.reduce((a, b) => a + b, 0) / frameRMS.length;
+      const varFrameRMS = frameRMS.reduce((a, b) => a + (b - meanFrameRMS) ** 2, 0) / frameRMS.length;
+
+      const energy = Math.min(100, Math.round(rms * 800));
+      const variability = Math.min(100, Math.round(varFrameRMS * 4000));
+      const tension = Math.min(100, Math.round(zcr * 300));
+
+      audioCtx.close();
+      console.log('Local audio analysis:', { energy, variability, tension });
+
+      return { 'Energy': energy, 'Expressiveness': variability, 'Tension': tension };
+
+    } catch(e) {
+      console.error('Local audio analysis error:', e);
+      return { 'Contemplation': 45, 'Concentration': 30, 'Interest': 25 };
+    }
+  }
+  /* ====================== STEP 3 — GROQ LLAMA PROFILE ====================== */
+async function generateProfile(language, emotions, languageMix, text) {
+    const emotionStr = Object.entries(emotions).map(([k, v]) => `${k}: ${v}%`).join(', ');
+
+    let langStr = language;
+    if (languageMix && languageMix.mix && languageMix.mix.length > 0) {
+      langStr = `${languageMix.primary} (${languageMix.primaryPct}%)`;
+      langStr += ', mixed with: ' + languageMix.mix.map(m => `${m.language} (${m.pct}%)`).join(', ');
+    }
+
+    const data = await callGroqProxy('chat/completions', {
+        model: 'openai/gpt-oss-20b',
+        messages: [
+          {
+            role: 'system',
+            content: `You are a sharp, modern satirical AI generating absurd one-line stereotypes from voice data.
+
+STRICT FORMAT: EXACTLY 3 lines. Not 4, not 5, not 7. THREE LINES ONLY. Each line: a percentage + a SHORT label only (max 5-6 words). NO colons, NO explanations, NO extra sentences after the label.
+
+Example of correct format:
+72% Berlin Späti Regular
+18% Telenovela Romantic Lead
+10% Confused Tourist
+
+Rules:
+- At least one line must reference the detected country/region tied to the language or accent.
+- At least one line must react to the actual content of what was said.
+- Use modern, current references — no dated clichés.
+- Never explain. Never add a colon and description. Just the short label.`
+          },
+          {
+            role: 'user',
+            content: `Language mix: ${langStr}
+Emotions: ${emotionStr}
+What they said: "${text || 'unclear'}"
+
+Give me the short labels now. Remember: NO explanations, just "% label".`
+          }
+        ],
+        max_tokens: 80,
+        temperature: 0.85
+    });
+
+    if (!data.choices || !data.choices[0]) {
+      console.error('Groq error:', data);
+      return '40% Unclassifiable Chaos\n35% Späti Regular\n25% Accidental Philosopher';
+    }
+
+    return data.choices[0].message.content;
+  }
+</script>
+</body>
+</html>
