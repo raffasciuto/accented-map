@@ -933,6 +933,37 @@
     return btoa(binary);
   }
 
+  // TODO: replace once the Space exists — see hf-space/README.md. Until then every call below
+  // fails fast (fetch to a placeholder 404s immediately) and the pipeline degrades gracefully,
+  // it does not hang or break the rest of the flow.
+  const HF_SPACE_URL = 'https://REPLACE-ME.hf.space';
+
+  // Real accent + emotion measurement. Times out on purpose rather than blocking publishing —
+  // if the Space is asleep/unreachable/not yet deployed, we save `null`, never a faked value.
+  async function analyzeAccentEmotion(blob, language) {
+    try {
+      const form = new FormData();
+      form.append('file', blob, 'recording.webm');
+      form.append('language', language || '');
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 15000);
+      const res = await fetch(`${HF_SPACE_URL}/analyze`, { method: 'POST', body: form, signal: controller.signal });
+      clearTimeout(timeout);
+      if (!res.ok) throw new Error(`HF Space returned ${res.status}`);
+      const data = await res.json();
+      return { accent: data.accent || null, emotion: data.emotion || null };
+    } catch (e) {
+      console.log('Accent/emotion analysis unavailable:', e.message);
+      return { accent: null, emotion: null };
+    }
+  }
+
+  // Fire-and-forget wake-up ping so the free-tier Space isn't asleep by the time recording finishes.
+  function pingHFSpaceColdStart() {
+    fetch(`${HF_SPACE_URL}/health`).catch(() => {});
+  }
+  pingHFSpaceColdStart();
+
   mapboxgl.accessToken = MAPBOX_TOKEN;
   const map = new mapboxgl.Map({
     container: 'map',
@@ -1028,7 +1059,9 @@
   });
 
   /* ====================== FIREBASE ====================== */
-  async function saveToFirebase(location, language, languageMix, emotions, profile, blob, username) {
+  async function saveToFirebase({ location, language, languageMix, profile, blob, username,
+    transcript, segmentLanguages, whisperConfidence, acousticFeatures, profileLines,
+    accentAnalysis, emotionAnalysis }) {
     try {
       const db = window._db;
       const storage = window._storage;
@@ -1052,8 +1085,15 @@
         location: { lat: location[1], lng: location[0] },
         language: language,
         languageMix: languageMix || null,
-        emotions: emotions,
+        transcript: transcript || '',
+        segmentLanguages: segmentLanguages || [],
+        whisperConfidence: whisperConfidence || null,
+        acousticFeatures: acousticFeatures || null,
+        accentAnalysis: accentAnalysis || null,
+        emotionAnalysis: emotionAnalysis || null,
         profile: profile,
+        profileLines: profileLines || [],
+        promptVersion: PROFILE_PROMPT_VERSION,
         audioURL: audioURL,
         likes: 0,
         dislikes: 0,
@@ -1088,6 +1128,7 @@
             audioURL: data.audioURL || '',
             username: data.username || 'Anonymous',
             docId: doc.id,
+            accentConfidencePct: data.accentAnalysis ? Math.round(data.accentAnalysis.confidence * 100) : null,
             likes: data.likes || 0,
             dislikes: data.dislikes || 0,
             agrees: data.agrees || 0,
@@ -1109,7 +1150,7 @@
   let activeId = null;
   let pulseRafId = null;
 
-  function addMemoFeature({ location, language, languageMix, profile, audioURL, username, docId, likes, dislikes, agrees, disagrees, timestamp }) {
+  function addMemoFeature({ location, language, languageMix, profile, audioURL, username, docId, accentConfidencePct, likes, dislikes, agrees, disagrees, timestamp }) {
     const interactions = (likes || 0) + (dislikes || 0) + (agrees || 0) + (disagrees || 0);
     const baseRadius = Math.min(9, 4.5 + interactions * 0.4);
     const isFresh = !!(timestamp && (Date.now() - new Date(timestamp).getTime() < FRESH_MEMO_MS));
@@ -1127,6 +1168,7 @@
         profile: profile || '',
         audioURL: audioURL || '',
         username: username || '',
+        accentConfidencePct: typeof accentConfidencePct === 'number' ? accentConfidencePct : -1,
         likes: likes || 0, dislikes: dislikes || 0, agrees: agrees || 0, disagrees: disagrees || 0,
         baseRadius,
         fresh: isFresh
@@ -1172,6 +1214,7 @@
       .setHTML(popupHTML({
         audioURL: p.audioURL, language: p.language, languageMix,
         profile: p.profile, username: p.username, docId: p.docId,
+        accentConfidencePct: p.accentConfidencePct >= 0 ? p.accentConfidencePct : null,
         likes: p.likes, dislikes: p.dislikes, agrees: p.agrees, disagrees: p.disagrees
       }))
       .addTo(map);
@@ -1354,25 +1397,6 @@
     }
   });
 
-  function normalizeProfile(text) {
-    const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
-    const parsed = lines.map(line => {
-      const match = line.match(/^(\d+)%\s*(.*)$/);
-      return match ? { pct: parseInt(match[1], 10), label: match[2] } : null;
-    }).filter(Boolean);
-
-    if (parsed.length === 0) return text;
-
-    const total = parsed.reduce((s, p) => s + p.pct, 0);
-    if (total === 0) return text;
-
-    let scaled = parsed.map(p => ({ label: p.label, pct: Math.round(p.pct / total * 100) }));
-    let sum = scaled.reduce((s, p) => s + p.pct, 0);
-    scaled[0].pct += (100 - sum);
-
-    return scaled.map(p => `${p.pct}% ${p.label}`).join('\n');
-  }
-
   function generateRandomUsername() {
     const adjectives = ['Mysterious','Loud','Silent','Curious','Wandering','Sleepy','Chaotic','Gentle','Bold','Foreign'];
     const nouns = ['Voice','Accent','Whisper','Tongue','Echo','Stranger','Wanderer','Listener','Speaker','Visitor'];
@@ -1403,27 +1427,38 @@
 
     try {
       status.textContent = '🌐 detecting language...';
-      const { language, text, languageMix } = await detectLanguageFromSegments(segmentBlobs);
+      const { language, text, languageMix, segmentLanguages, whisperConfidence } = await detectLanguageFromSegments(segmentBlobs);
       console.log('Language:', language, '| Mix:', languageMix);
-      popup.setHTML(popupHTML({ audioURL, language, languageMix, loading: '🧠 analyzing emotions...' }));
+      const isMultiLang = !!(languageMix && languageMix.mix && languageMix.mix.length > 0);
+      popup.setHTML(popupHTML({ audioURL, language, languageMix, loading: '🎙️ measuring accent + emotion...' }));
       mountMemoCanvas(popup, audioURL, language);
-      await new Promise(r => setTimeout(r, 800));
 
-      status.textContent = '🧠 analyzing emotions...';
-      const emotions = await analyzeEmotions(blob);
-      console.log('Emotions:', emotions);
-      await new Promise(r => setTimeout(r, 800));
+      status.textContent = '🎙️ measuring accent + emotion...';
+      // Independent signals — run concurrently instead of back to back.
+      const [{ accent: accentAnalysis, emotion: emotionAnalysis }, acousticFeatures] = await Promise.all([
+        analyzeAccentEmotion(blob, language),
+        analyzeAcousticFeatures(blob)
+      ]);
+      console.log('Accent:', accentAnalysis, '| Emotion:', emotionAnalysis, '| Acoustic:', acousticFeatures);
+
+      // Single language → the accent-confidence score is the header number (a trivial ~100%
+      // "presence" figure would say nothing). Code-switching → the mix breakdown IS the signal.
+      const accentConfidencePct = accentAnalysis ? Math.round(accentAnalysis.confidence * 100)
+        : (whisperConfidence && typeof whisperConfidence.noSpeechProb === 'number'
+            ? Math.round((1 - whisperConfidence.noSpeechProb) * 100) : null);
+      const mixPct = languageMix ? languageMix.primaryPct : null;
 
       status.textContent = '🎭 generating profile...';
-      let profile = await generateProfile(language, emotions, languageMix, text);
-      profile = normalizeProfile(profile);
-      console.log('Profile:', profile);
-      await new Promise(r => setTimeout(r, 400));
+      const rawProfile = await generateProfile({ language, languageMix, text, acousticFeatures, accentAnalysis, whisperConfidence });
+      let profileLines = parseProfileLines(rawProfile);
+      profileLines = applyRealPercentages(profileLines, { accentConfidencePct, mixPct });
+      const profile = profileLinesToDisplayText(profileLines);
+      console.log('Profile lines:', profileLines);
 
       let langDisplay = language ? language.toUpperCase() : '...';
-      let pctDisplay = languageMix ? `${languageMix.primaryPct}%` : '100%';
+      let pctDisplay = isMultiLang ? `${mixPct}%` : (accentConfidencePct !== null ? `${accentConfidencePct}%` : '...');
       let mixDisplay = '';
-      if (languageMix && languageMix.mix && languageMix.mix.length > 0) {
+      if (isMultiLang) {
         langDisplay = languageMix.primary.toUpperCase();
         mixDisplay = languageMix.mix.map(m => `<span>${m.language} ${m.pct}%</span>`).join('');
       }
@@ -1465,8 +1500,12 @@
             💾 saving...
           </div>
         `);
-        const docId = await saveToFirebase(location, language, languageMix, emotions, profile, blob, username);
-        popup.setHTML(popupHTML({ audioURL, language, languageMix, profile, username, docId }));
+        const docId = await saveToFirebase({
+          location, language, languageMix, profile, blob, username,
+          transcript: text, segmentLanguages, whisperConfidence,
+          acousticFeatures, profileLines, accentAnalysis, emotionAnalysis
+        });
+        popup.setHTML(popupHTML({ audioURL, language, languageMix, profile, username, docId, accentConfidencePct, isMultiLang }));
         mountMemoCanvas(popup, docId || audioURL, language);
         el.style.background = 'rgba(201,166,247,0.85)';
         wrap.style.width = '11px';
@@ -1481,7 +1520,7 @@
 
     } catch(e) {
       console.error('Pipeline error:', e);
-      popup.setHTML(popupHTML({ audioURL, language: 'unknown', profile: '40% unclassifiable chaos\n35% Späti regular\n25% accidental philosopher' }));
+      popup.setHTML(popupHTML({ audioURL, language: 'unknown', profile: '40% unclassifiable chaos\n35% signal lost in translation\n25% accidental philosopher' }));
       mountMemoCanvas(popup, audioURL, 'unknown');
       status.textContent = 'share your hot take';
     }
@@ -1646,7 +1685,7 @@
     return `<div class="memo-predictions">${rows}</div>`;
   }
 
-  function popupHTML({ audioURL, language, loading, profile, languageMix, username, docId, likes = 0, dislikes = 0, agrees = 0, disagrees = 0 }) {
+  function popupHTML({ audioURL, language, loading, profile, languageMix, username, docId, accentConfidencePct = null, likes = 0, dislikes = 0, agrees = 0, disagrees = 0 }) {
     let langDisplay = language ? language.toUpperCase() : '...';
     let pctDisplay = '';
     let mixDisplay = '';
@@ -1658,7 +1697,9 @@
         .map(m => `<span>${m.language} ${m.pct}%</span>`)
         .join('');
     } else if (language) {
-      pctDisplay = '100%';
+      // Single language: show the real accent-classifier confidence instead of a trivial ~100%
+      // "presence" figure, which would say nothing since there's nothing else it could be.
+      pctDisplay = accentConfidencePct !== null ? `${accentConfidencePct}%` : '100%';
     }
 
     const reactionsHTML = docId ? `
@@ -1718,8 +1759,16 @@
         });
         const lang = data.language || 'unknown';
         const txt = data.text || '';
+        // verbose_json's `segments` array gives real start/end times for detected speech within
+        // this chunk — summing them gives actual speech duration, instead of assuming the whole
+        // 4s chunk was speech (silence/padding would otherwise inflate that chunk's vote).
+        const subSegments = Array.isArray(data.segments) ? data.segments : [];
+        const speechSeconds = subSegments.reduce((s, seg) => s + Math.max(0, (seg.end || 0) - (seg.start || 0)), 0)
+          || (txt.trim() ? 4 : 0); // fallback: no segment timing returned, but there was real text
+        const avgLogprobs = subSegments.map(seg => seg.avg_logprob).filter(v => typeof v === 'number');
+        const noSpeechProbs = subSegments.map(seg => seg.no_speech_prob).filter(v => typeof v === 'number');
         if (txt.trim()) {
-          results.push({ language: lang, text: txt });
+          results.push({ language: lang, text: txt, speechSeconds, avgLogprobs, noSpeechProbs });
           console.log('Segmento:', lang, '|', txt);
         }
       } catch(e) {
@@ -1728,30 +1777,45 @@
     }
 
     if (results.length === 0) {
-      return { language: 'unknown', text: '', languageMix: { primary: 'unknown', primaryPct: 100, mix: [] } };
+      return {
+        language: 'unknown', text: '',
+        languageMix: { primary: 'unknown', primaryPct: 100, mix: [] },
+        segmentLanguages: [], whisperConfidence: null
+      };
     }
 
-    const counts = {};
-    results.forEach(r => { counts[r.language] = (counts[r.language] || 0) + 1; });
-    const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
-    const total = results.length;
+    const durationByLang = {};
+    results.forEach(r => { durationByLang[r.language] = (durationByLang[r.language] || 0) + r.speechSeconds; });
+    const totalDuration = Object.values(durationByLang).reduce((s, d) => s + d, 0) || 1;
+    const sorted = Object.entries(durationByLang).sort((a, b) => b[1] - a[1]);
     const primary = sorted[0][0];
-    const primaryPct = Math.round(sorted[0][1] / total * 100);
-    const mix = sorted.slice(1).map(([lang, count]) => ({
+    const primaryPct = Math.round(sorted[0][1] / totalDuration * 100);
+    const mix = sorted.slice(1).map(([lang, duration]) => ({
       language: lang,
-      pct: Math.round(count / total * 100)
+      pct: Math.round(duration / totalDuration * 100)
     }));
 
     const fullText = results.map(r => r.text).join(' ');
 
+    const allLogprobs = results.flatMap(r => r.avgLogprobs);
+    const allNoSpeech = results.flatMap(r => r.noSpeechProbs);
+    const whisperConfidence = (allLogprobs.length || allNoSpeech.length) ? {
+      avgLogprob: allLogprobs.length ? allLogprobs.reduce((s, v) => s + v, 0) / allLogprobs.length : null,
+      noSpeechProb: allNoSpeech.length ? allNoSpeech.reduce((s, v) => s + v, 0) / allNoSpeech.length : null
+    } : null;
+
     return {
       language: primary,
       text: fullText,
-      languageMix: { primary, primaryPct, mix }
+      languageMix: { primary, primaryPct, mix },
+      segmentLanguages: results.map(r => ({ language: r.language, text: r.text, speechSeconds: r.speechSeconds })),
+      whisperConfidence
     };
   }
 
-async function analyzeEmotions(blob) {
+// Not real emotion recognition — RMS/zero-crossing/frame-variance measurements of the raw
+// waveform. Named for what it actually measures, not what it might be mistaken for.
+async function analyzeAcousticFeatures(blob) {
     try {
       const arrayBuffer = await blob.arrayBuffer();
       const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -1795,56 +1859,104 @@ async function analyzeEmotions(blob) {
       return { 'Contemplation': 45, 'Concentration': 30, 'Interest': 25 };
     }
   }
-  /* ====================== STEP 3 — GROQ LLAMA PROFILE ====================== */
-async function generateProfile(language, emotions, languageMix, text) {
-    const emotionStr = Object.entries(emotions).map(([k, v]) => `${k}: ${v}%`).join(', ');
+  /* ====================== STEP 3 — GROQ LLAMA PROFILE (v2, tagged) ====================== */
+  const PROFILE_PROMPT_VERSION = 'v2';
+  const PROFILE_SYSTEM_PROMPT = `You are the biased worldview an AI language model has absorbed about how people speak — you react instantly with stereotypes, associations, and cultural shorthand tied to language, accent, and what was said. You are not neutral or careful. You are the flattening, reductive judgment an AI system makes about someone based on their voice.
+
+STRICT FORMAT: output exactly 3 lines, nothing else. Each line: "NN% [TAG] Short label" where TAG is LANG, MIX, or CONTENT. Max 6 words per label. No colons, no explanations, no extra sentences after the label.
+
+Line 1 [LANG]: react ONLY to the language/accent signal — give the specific cultural association or stereotype that comes to mind for that accent/language. Be specific and a little uncomfortable, not generic.
+Line 2 [MIX]: react ONLY to the language-mixing pattern described (or to speaking only one language, if that is the case).
+Line 3 [CONTENT]: react to what was actually said.
+
+All labels must be in English, regardless of what language was spoken.
+
+Example:
+62% [LANG] Berlin Späti Regular
+21% [MIX] Code-Switches Like A Group Chat
+17% [CONTENT] Overthinking It On Main`;
+
+  // Empirically tested against openai/gpt-oss-20b: that model hedges into generic adjective
+  // lists ("passionate, fiery, flirtatious") instead of the specific, uncomfortable caricature
+  // this needs. llama-3.1-8b-instant reliably produces the sharper, associative tone — and it's
+  // Groq's cheapest model, so this fixes tone and cost at the same time.
+  const PROFILE_MODEL = 'llama-3.1-8b-instant';
+
+  async function generateProfile({ language, languageMix, text, acousticFeatures, accentAnalysis, whisperConfidence }) {
+    const isMultiLang = !!(languageMix && languageMix.mix && languageMix.mix.length > 0);
+    const acousticStr = Object.entries(acousticFeatures || {}).map(([k, v]) => `${k}: ${v}%`).join(', ');
 
     let langStr = language;
-    if (languageMix && languageMix.mix && languageMix.mix.length > 0) {
-      langStr = `${languageMix.primary} (${languageMix.primaryPct}%)`;
-      langStr += ', mixed with: ' + languageMix.mix.map(m => `${m.language} (${m.pct}%)`).join(', ');
+    if (isMultiLang) {
+      langStr = `${languageMix.primary} (${languageMix.primaryPct}%), mixed with: `
+        + languageMix.mix.map(m => `${m.language} (${m.pct}%)`).join(', ');
     }
 
-    const data = await callGroqProxy('chat/completions', {
-        model: 'openai/gpt-oss-20b',
-        messages: [
-          {
-            role: 'system',
-            content: `You are a sharp, modern satirical AI generating absurd one-line stereotypes from voice data.
+    let accentStr = 'no accent measurement available';
+    if (accentAnalysis) {
+      accentStr = accentAnalysis.coverage
+        ? `${accentAnalysis.top} accent, ${Math.round(accentAnalysis.confidence * 100)}% confidence (real match, model trained on this language)`
+        : `forced through the English accent model (no model exists for "${language}") — nonsense result: ${accentAnalysis.top}, ${Math.round(accentAnalysis.confidence * 100)}% confidence`;
+    }
 
-STRICT FORMAT: EXACTLY 3 lines. Not 4, not 5, not 7. THREE LINES ONLY. Each line: a percentage + a SHORT label only (max 5-6 words). NO colons, NO explanations, NO extra sentences after the label.
-
-Example of correct format:
-72% Berlin Späti Regular
-18% Telenovela Romantic Lead
-10% Confused Tourist
-
-Rules:
-- At least one line must reference the detected country/region tied to the language or accent.
-- At least one line must react to the actual content of what was said.
-- Use modern, current references — no dated clichés.
-- Never explain. Never add a colon and description. Just the short label.`
-          },
-          {
-            role: 'user',
-            content: `Language mix: ${langStr}
-Emotions: ${emotionStr}
+    const userContent = `Language: ${language}${isMultiLang ? ' (code-switching detected)' : ' (only one language spoken)'}
+Language mix: ${langStr}
+Accent signal: ${accentStr}
+Acoustic features: ${acousticStr || 'none'}
 What they said: "${text || 'unclear'}"
 
-Give me the short labels now. Remember: NO explanations, just "% label".`
-          }
-        ],
-        max_completion_tokens: 300,
-        temperature: 0.85,
-        reasoning_effort: 'low'
+Give me the 3 lines now.`;
+
+    const data = await callGroqProxy('chat/completions', {
+      model: PROFILE_MODEL,
+      messages: [
+        { role: 'system', content: PROFILE_SYSTEM_PROMPT },
+        { role: 'user', content: userContent }
+      ],
+      max_tokens: 150,
+      temperature: 0.9
     });
 
     if (!data.choices || !data.choices[0]) {
       console.error('Groq error:', data);
-      return '40% Unclassifiable Chaos\n35% Späti Regular\n25% Accidental Philosopher';
+      return '40% [LANG] Unclassifiable Chaos\n35% [MIX] Signal Lost In Translation\n25% [CONTENT] Accidental Philosopher';
     }
 
     return data.choices[0].message.content;
+  }
+
+  // Parses the tagged "NN% [TAG] Label" format into structured rows, tolerating a missing/
+  // malformed tag (falls back to CONTENT) so a slightly-off model response still renders.
+  function parseProfileLines(rawText) {
+    if (!rawText) return [];
+    return rawText.split('\n').map(l => l.trim()).filter(Boolean).map(line => {
+      const match = line.match(/^(\d+)%\s*(?:\[(\w+)\])?\s*(.*)$/);
+      if (!match) return null;
+      const pct = parseInt(match[1], 10);
+      const source = (match[2] || 'CONTENT').toUpperCase();
+      const label = match[3].trim();
+      if (!label) return null;
+      return { pct, source, label };
+    }).filter(Boolean);
+  }
+
+  // LANG/MIX percentages come from real measurements, not the model's own guess — the model only
+  // supplies the associative label text for those two lines. CONTENT has no ground truth to check
+  // against, so the model's own percentage is kept as-is (it's the deliberately "creative" line).
+  function applyRealPercentages(profileLines, { accentConfidencePct, mixPct }) {
+    return profileLines.map(line => {
+      if (line.source === 'LANG' && typeof accentConfidencePct === 'number') {
+        return { ...line, pct: accentConfidencePct };
+      }
+      if (line.source === 'MIX' && typeof mixPct === 'number') {
+        return { ...line, pct: mixPct };
+      }
+      return line;
+    });
+  }
+
+  function profileLinesToDisplayText(profileLines) {
+    return profileLines.map(l => `${l.pct}% ${l.label}`).join('\n');
   }
 </script>
 </body>
