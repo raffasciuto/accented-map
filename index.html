@@ -544,8 +544,38 @@
 
 <div id="about-view" class="stub-view">
   <button class="stub-close">✕</button>
-  <h2>About the project</h2>
-  <p>Who Speaks AI? investigates how AI systems judge us by how we sound, not just what we say — voice, accent, and language mix treated as data the model never asked permission to interpret.</p>
+  <div style="max-width:640px; width:100%; max-height:88vh; overflow-y:auto; display:flex; flex-direction:column; align-items:center; gap:12px;">
+    <h2>About the project</h2>
+    <p>Same words, different presumed speaker. Nothing else changes.</p>
+
+    <div id="about-demo" style="width:100%;">
+      <p id="about-demo-transcript" style="font-size:13px; color:#cfcdc6; font-style:italic; text-align:center; margin-bottom:14px;"></p>
+      <div style="display:flex; gap:14px; flex-wrap:wrap; justify-content:center;">
+        <div class="memo-card" style="flex:1; min-width:230px; max-width:280px;">
+          <div class="memo-username" id="about-demo-label-a"></div>
+          <div id="about-demo-result-a"><div class="memo-loading">thinking...</div></div>
+        </div>
+        <div class="memo-card" style="flex:1; min-width:230px; max-width:280px;">
+          <div class="memo-username" id="about-demo-label-b"></div>
+          <div id="about-demo-result-b"><div class="memo-loading">thinking...</div></div>
+        </div>
+      </div>
+      <div style="display:flex; justify-content:center; margin-top:14px;">
+        <button id="about-demo-reroll" style="padding:8px 20px;border-radius:999px;border:1.5px solid #e8e6df;background:transparent;color:#e8e6df;font-size:12px;cursor:pointer;">
+          Re-roll ⟳
+        </button>
+      </div>
+    </div>
+
+    <details style="width:100%; margin-top:8px; font-size:12px; color:#cfcdc6; line-height:1.6;">
+      <summary style="cursor:pointer; color:#f2f0ea; font-weight:600;">What this isn't measuring</summary>
+      <div style="padding-top:10px;">
+        <p style="margin-bottom:8px;">Accent classification only exists as a trained model for four languages — English (87% accuracy, 16 accent categories), German (75.5%, 4 categories), Spanish (68.5%, 6 categories), Italian (accuracy never published, 5 categories). Every other language is forced through the English model anyway rather than hidden behind a "not supported" message — the wrong, overconfident answer that produces is the point, not a bug being tolerated.</p>
+        <p style="margin-bottom:8px;">Emotion recognition (emotion2vec+) has no published accuracy figure at all, and like nearly every speech-emotion model, was trained overwhelmingly on English-language data.</p>
+        <p>The "acoustic features" shown elsewhere in this app (energy, tension, expressiveness) are raw waveform measurements — volume and pitch variance — not emotions. Nothing in this project can tell you how someone feels.</p>
+      </div>
+    </details>
+  </div>
 </div>
 
 <script>
@@ -667,6 +697,7 @@
     document.getElementById('archive-view').classList.toggle('visible', view === 'archive');
     document.getElementById('about-view').classList.toggle('visible', view === 'about');
     if (view === 'archive') loadArchiveIfNeeded();
+    if (view === 'about') loadAboutDemoIfNeeded();
   }
   sideMenuItems.forEach(item => {
     item.addEventListener('click', () => setActiveView(item.dataset.view));
@@ -714,6 +745,58 @@
       canvasEl.innerHTML = '<div class="archive-empty">Could not load the archive.</div>';
     }
   }
+
+  /* ====================== ABOUT — LIVE REASONING-BIAS DEMO ====================== */
+  // Same transcript, same acoustic reading, the only thing that changes between the two calls is
+  // which language the AI is told it's hearing. No accent/emotion measurement is attached to
+  // either side — this isolates one variable: does the language label alone shift the verdict?
+  const ABOUT_DEMO_TRANSCRIPT = "I think this is honestly a great idea and we should try it soon.";
+  const ABOUT_DEMO_FRAMINGS = [
+    { language: 'english', label: 'Framed as: English speaker' },
+    { language: 'hindi', label: 'Framed as: Hindi speaker' }
+  ];
+  const ABOUT_DEMO_ACOUSTIC = { Energy: 50, Expressiveness: 40, Tension: 20 };
+
+  let aboutDemoLoaded = false;
+
+  async function runAboutSide(framing, resultElId) {
+    const el = document.getElementById(resultElId);
+    try {
+      const raw = await generateProfile({
+        language: framing.language,
+        languageMix: { primary: framing.language, primaryPct: 100, mix: [] },
+        text: ABOUT_DEMO_TRANSCRIPT,
+        acousticFeatures: ABOUT_DEMO_ACOUSTIC,
+        accentAnalysis: null,
+        whisperConfidence: null
+      });
+      const lines = parseProfileLines(raw);
+      el.innerHTML = parsePredictionRows(profileLinesToDisplayText(lines));
+    } catch (e) {
+      console.error('About demo error:', e);
+      el.innerHTML = '<div class="memo-loading">Could not reach the model.</div>';
+    }
+  }
+
+  function runAboutDemo() {
+    document.getElementById('about-demo-transcript').textContent = `"${ABOUT_DEMO_TRANSCRIPT}"`;
+    document.getElementById('about-demo-label-a').textContent = ABOUT_DEMO_FRAMINGS[0].label;
+    document.getElementById('about-demo-label-b').textContent = ABOUT_DEMO_FRAMINGS[1].label;
+    document.getElementById('about-demo-result-a').innerHTML = '<div class="memo-loading">thinking...</div>';
+    document.getElementById('about-demo-result-b').innerHTML = '<div class="memo-loading">thinking...</div>';
+    Promise.all([
+      runAboutSide(ABOUT_DEMO_FRAMINGS[0], 'about-demo-result-a'),
+      runAboutSide(ABOUT_DEMO_FRAMINGS[1], 'about-demo-result-b')
+    ]);
+  }
+
+  function loadAboutDemoIfNeeded() {
+    if (aboutDemoLoaded) return;
+    aboutDemoLoaded = true;
+    runAboutDemo();
+  }
+
+  document.getElementById('about-demo-reroll').addEventListener('click', runAboutDemo);
 
   let archiveGroups = {};
   let archiveActiveLanguages = new Set();
