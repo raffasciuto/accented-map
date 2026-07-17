@@ -1016,10 +1016,7 @@
     return btoa(binary);
   }
 
-  // TODO: replace once the Space exists — see hf-space/README.md. Until then every call below
-  // fails fast (fetch to a placeholder 404s immediately) and the pipeline degrades gracefully,
-  // it does not hang or break the rest of the flow.
-  const HF_SPACE_URL = 'https://REPLACE-ME.hf.space';
+  const HF_SPACE_URL = 'https://raffasciuto-map-accent-emotion.hf.space';
 
   // Real accent + emotion measurement. Times out on purpose rather than blocking publishing —
   // if the Space is asleep/unreachable/not yet deployed, we save `null`, never a faked value.
