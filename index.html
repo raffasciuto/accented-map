@@ -1834,8 +1834,9 @@ What they said: "${text || 'unclear'}"
 Give me the short labels now. Remember: NO explanations, just "% label".`
           }
         ],
-        max_tokens: 80,
-        temperature: 0.85
+        max_completion_tokens: 300,
+        temperature: 0.85,
+        reasoning_effort: 'low'
     });
 
     if (!data.choices || !data.choices[0]) {
