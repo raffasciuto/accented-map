@@ -1,0 +1,33 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /memos/{memoId} {
+      allow read: if true;
+
+      allow create: if request.resource.data.username is string
+        && request.resource.data.username.size() < 60
+        && request.resource.data.profile is string
+        && request.resource.data.profile.size() < 3000
+        && request.resource.data.audioURL is string
+        && request.resource.data.likes == 0
+        && request.resource.data.dislikes == 0
+        && request.resource.data.agrees == 0
+        && request.resource.data.disagrees == 0;
+
+      // Reactions only: lets reactToMemo() increment exactly one of
+      // likes/dislikes/agrees/disagrees by exactly 1, nothing else can change.
+      allow update: if request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['likes', 'dislikes', 'agrees', 'disagrees'])
+        && request.resource.data.likes >= resource.data.likes
+        && request.resource.data.dislikes >= resource.data.dislikes
+        && request.resource.data.agrees >= resource.data.agrees
+        && request.resource.data.disagrees >= resource.data.disagrees
+        && (request.resource.data.likes + request.resource.data.dislikes
+            + request.resource.data.agrees + request.resource.data.disagrees)
+          == (resource.data.likes + resource.data.dislikes
+            + resource.data.agrees + resource.data.disagrees) + 1;
+
+      allow delete: if false;
+    }
+  }
+}
