@@ -6,6 +6,9 @@
   <title>Heat Map</title>
   <script src='https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js'></script>
   <link href='https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css' rel='stylesheet' />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
@@ -193,28 +196,10 @@
     }
     .stub-close:hover { background: rgba(255,255,255,0.1); }
 
-    /* infinite starfield behind the archive content, same night-sky feel as the globe's fog/space */
-    .archive-stars {
-      position: absolute;
-      inset: 0;
-      z-index: 0;
-      pointer-events: none;
-      background-image:
-        radial-gradient(1.5px 1.5px at 10% 20%, rgba(255,255,255,0.7), transparent 100%),
-        radial-gradient(1px 1px at 25% 65%, rgba(255,255,255,0.5), transparent 100%),
-        radial-gradient(1.5px 1.5px at 40% 10%, rgba(255,255,255,0.6), transparent 100%),
-        radial-gradient(1px 1px at 55% 80%, rgba(255,255,255,0.4), transparent 100%),
-        radial-gradient(1.5px 1.5px at 70% 35%, rgba(255,255,255,0.65), transparent 100%),
-        radial-gradient(1px 1px at 85% 55%, rgba(255,255,255,0.45), transparent 100%),
-        radial-gradient(1.5px 1.5px at 95% 15%, rgba(255,255,255,0.55), transparent 100%),
-        radial-gradient(1px 1px at 15% 90%, rgba(255,255,255,0.4), transparent 100%),
-        radial-gradient(1.5px 1.5px at 60% 5%, rgba(255,255,255,0.6), transparent 100%),
-        radial-gradient(1px 1px at 5% 45%, rgba(255,255,255,0.5), transparent 100%);
-      background-repeat: repeat;
-      background-size: 340px 340px;
-    }
-    /* archive is a pannable "space", not a scrolling page — override the shared centered-stub layout */
+    /* archive is a pannable/zoomable particle field, not a scrolling page — override the shared
+       centered-stub layout, same page background as the About page for brand consistency */
     #archive-view.visible { display: block; padding: 0; text-align: left; }
+    #archive-view { background: #1e1e1e; }
 
     #archive-canvas-wrap {
       position: absolute; inset: 0; z-index: 1;
@@ -223,46 +208,8 @@
       user-select: none;
     }
     #archive-canvas-wrap.grabbing { cursor: grabbing; }
-    #archive-canvas-origin { position: absolute; left: 50%; top: 50%; }
-    #archive-canvas { position: absolute; left: 0; top: 0; will-change: transform; }
+    #archive-canvas { display: block; }
 
-    .archive-group {
-      position: absolute;
-      left: 0; top: 0;
-      width: max-content;
-      max-width: 340px;
-      text-align: center;
-    }
-    .archive-group-header {
-      display: flex;
-      align-items: baseline;
-      justify-content: center;
-      gap: 8px;
-      margin-bottom: 8px;
-      opacity: 0.85;
-    }
-    .archive-group-lang { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; color: #f2f0ea; }
-    .archive-group-count { font-size: 10px; color: #8a8880; }
-    .archive-word-cloud {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: baseline;
-      justify-content: center;
-      gap: 10px 16px;
-      padding: 8px 0;
-      cursor: pointer;
-    }
-    .archive-word {
-      display: inline-block;
-      font-weight: 700;
-      white-space: nowrap;
-      color: #fff;
-      pointer-events: none;
-      transition: transform .5s cubic-bezier(.2,.8,.2,1);
-      will-change: transform;
-    }
-    /* hovering a cluster "arranges" its scattered/rotated words back into a neat line */
-    .archive-word-cloud:hover .archive-word { transform: none !important; }
     .archive-empty, .archive-loading {
       position: fixed; inset: 0; z-index: 2;
       display: flex; align-items: center; justify-content: center;
@@ -270,93 +217,37 @@
       pointer-events: none;
     }
 
-    /* floating filter toggle, same visual language as the record button */
-    #archive-filter-btn {
-      position: absolute; bottom: 28px; right: 28px; z-index: 3;
-      width: 56px; height: 56px; border-radius: 50%;
-      border: 2px solid #795DF7;
-      background: rgba(121,93,247,0.15);
-      backdrop-filter: blur(6px);
-      color: #e8e6df; font-size: 22px;
-      cursor: pointer;
-      transition: transform .2s ease, background .2s ease;
-    }
-    #archive-filter-btn:hover { transform: scale(1.1); background: rgba(121,93,247,0.3); }
     #archive-filter-panel {
-      position: absolute; bottom: 96px; right: 28px; z-index: 3;
-      background: rgba(25,24,28,0.94);
-      backdrop-filter: blur(12px);
-      border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 16px;
-      padding: 14px;
-      max-width: 240px;
+      position: fixed;
+      bottom: 110px; left: 50%;
+      transform: translateX(-50%);
+      z-index: 71;
+      padding: 32px 36px;
+      border-radius: 24px;
+      width: min(90vw, 460px);
       display: none;
-      box-shadow: 0 8px 30px rgba(0,0,0,0.4);
     }
     #archive-filter-panel.open { display: block; }
-    #archive-filters { display: flex; flex-wrap: wrap; gap: 8px; }
-    .archive-filter-chip {
-      padding: 6px 12px;
+    #archive-filters {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 16px 18px;
+    }
+    .archive-lang-pill {
+      padding: 14px 22px;
       border-radius: 999px;
-      border: 1.5px solid #795DF7;
+      border: 1.5px solid #C92505;
       background: transparent;
-      color: #cfcdc6;
-      font-size: 10.5px;
+      color: #C92505;
+      font-family: inherit;
+      font-size: 13px;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.02em;
       cursor: pointer;
-      transition: background .15s ease, color .15s ease, opacity .15s ease;
-      opacity: 0.55;
+      transition: background .15s ease, color .15s ease;
     }
-    .archive-filter-chip.active { opacity: 1; background: #795DF7; color: #fff; }
-    .archive-filter-chip:hover { opacity: 1; }
-
-    /* cluster detail popup — glass card look, opened by clicking a cluster */
-    #archive-popup-overlay {
-      position: fixed; inset: 0; z-index: 50;
-      background: rgba(5,5,6,0.5);
-      display: none;
-      align-items: center;
-      justify-content: center;
-      padding: 24px;
-    }
-    #archive-popup-overlay.visible { display: flex; }
-    .archive-popup {
-      position: relative;
-      width: 100%; max-width: 380px;
-      background: rgba(255,255,255,0.07);
-      backdrop-filter: blur(28px) saturate(150%);
-      -webkit-backdrop-filter: blur(28px) saturate(150%);
-      border: 1px solid rgba(255,255,255,0.14);
-      border-radius: 28px;
-      padding: 32px 28px;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-      text-align: center;
-    }
-    .archive-popup-close {
-      position: absolute; top: 16px; right: 16px;
-      width: 28px; height: 28px; border-radius: 50%;
-      border: 1px solid rgba(255,255,255,0.15);
-      background: rgba(255,255,255,0.05); color: #cfcdc6;
-      cursor: pointer; font-size: 13px;
-      display: flex; align-items: center; justify-content: center;
-    }
-    .archive-popup-close:hover { background: rgba(255,255,255,0.12); }
-    .archive-popup-lang {
-      font-size: 20px; font-weight: 700; color: #fff;
-      text-transform: uppercase; letter-spacing: 0.02em;
-      margin-bottom: 4px;
-    }
-    .archive-popup-count { font-size: 12px; color: #a8a5ae; margin-bottom: 24px; }
-    .archive-popup-row {
-      display: flex; align-items: baseline; justify-content: center;
-      gap: 12px; padding: 12px 0;
-      border-top: 1px solid rgba(255,255,255,0.1);
-    }
-    .archive-popup-row:first-of-type { border-top: none; }
-    .archive-popup-pct { font-size: 22px; font-weight: 700; color: #795DF7; min-width: 56px; text-align: right; }
-    .archive-popup-word { font-size: 16px; font-weight: 600; color: #fff; text-transform: capitalize; }
+    .archive-lang-pill.active { background: #C92505; color: #fff; }
 
     /* ====================== MEMO MAP DOTS ====================== */
     /* Mapbox positions the marker's ROOT element via its own inline transform — so the wrap here must
@@ -450,6 +341,223 @@
       transition: background .15s;
     }
     .memo-reactions-row button:hover { background: rgba(255,255,255,0.09); }
+
+    /* ====================== ABOUT PAGE REDESIGN ====================== */
+    @property --about-angle {
+      syntax: '<angle>';
+      initial-value: 0deg;
+      inherits: false;
+    }
+    /* animated "glass" stroke — reused by the about menu, the country card and the contact button.
+       Thin, crisp ring; only #C92505 at varying alpha travels around it — no blur bloom, no second hue. */
+    .glass-border {
+      position: relative;
+      z-index: 0;
+      background: rgba(10,9,9,0.6);
+      border: 1px solid rgba(255,255,255,0.1);
+      backdrop-filter: blur(22px) saturate(150%);
+      -webkit-backdrop-filter: blur(22px) saturate(150%);
+      box-shadow: 0 20px 50px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06);
+    }
+    .glass-border::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      padding: 1.5px;
+      background: conic-gradient(from var(--about-angle),
+        rgba(201,37,5,0) 0deg,
+        rgba(201,37,5,1) 50deg,
+        rgba(201,37,5,0.1) 140deg,
+        rgba(201,37,5,0.8) 230deg,
+        rgba(201,37,5,0) 360deg);
+      -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+      mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      pointer-events: none;
+      animation: about-border-spin 4.5s linear infinite;
+    }
+    @keyframes about-border-spin { to { --about-angle: 360deg; } }
+
+    #about-view { font-family: 'DM Mono', 'SFMono-Regular', Menlo, monospace; background: #1e1e1e; }
+    #about-view.visible { display: block; padding: 0; text-align: left; overflow-y: auto; }
+
+    .about-menu {
+      position: fixed;
+      top: 28px; left: 50%;
+      transform: translateX(-50%);
+      z-index: 70;
+      display: flex;
+      align-items: center;
+      gap: 28px;
+      padding: 14px 28px;
+      border-radius: 999px;
+    }
+    .about-menu--bottom { top: auto; bottom: 28px; }
+    .about-menu-item {
+      background: none;
+      border: none;
+      color: #e8e6df;
+      font-family: inherit;
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      cursor: pointer;
+      padding: 4px 2px;
+      transition: color .15s ease;
+    }
+    .about-menu-item:hover { color: #fff; }
+    .about-menu-item.active { color: #C92505; font-weight: 600; }
+    .about-menu-record {
+      margin-left: 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #6f6d66;
+      user-select: none;
+    }
+    .about-menu-record-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: #C92505;
+      box-shadow: 0 0 0 1.5px rgba(201,37,5,0.5);
+      opacity: .45;
+    }
+
+    .about-scroll {
+      max-width: 1160px;
+      margin: 0 auto;
+      padding: 160px 40px 160px;
+    }
+
+    .about-hero {
+      margin-bottom: 170px;
+    }
+    .about-globe {
+      position: relative;
+      width: 100%;
+      max-width: 860px;
+      height: 700px;
+      margin: 0 auto;
+    }
+    .about-globe .mapboxgl-ctrl-logo, .about-globe .mapboxgl-ctrl-attrib { display: none; }
+    .country-info-panel {
+      display: none;
+      position: absolute;
+      z-index: 5;
+      width: 220px;
+      padding: 22px 24px;
+      border-radius: 20px;
+      transition: left .35s ease, top .35s ease;
+    }
+    .country-info-close {
+      position: absolute;
+      top: 12px; right: 12px;
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      border: 1px solid rgba(255,255,255,0.15);
+      background: rgba(255,255,255,0.05);
+      color: #cfcdc6;
+      font-size: 11px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .country-info-close:hover { background: rgba(255,255,255,0.12); color: #f2f0ea; }
+    .country-info-name {
+      font-size: 20px;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+      color: #f2f0ea;
+      margin-bottom: 14px;
+      padding-right: 20px;
+    }
+    .country-info-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: 11px;
+      color: #cfcdc6;
+      text-transform: uppercase;
+      padding: 5px 0;
+    }
+    .country-info-note {
+      margin-top: 10px;
+      font-size: 9.5px;
+      color: #6f6d66;
+      text-transform: uppercase;
+      line-height: 1.5;
+    }
+
+    .about-section { padding: 150px 0; }
+    .about-heading {
+      font-size: 24px;
+      font-weight: 500;
+      text-transform: uppercase;
+      text-align: center;
+      color: #f2f0ea;
+      letter-spacing: 0.01em;
+      margin: 0 auto 64px;
+      max-width: 820px;
+    }
+    .about-cols {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 48px;
+    }
+    .about-col p {
+      font-size: 12.5px;
+      line-height: 1.7;
+      color: #b9b7b0;
+    }
+    .pixel-icon {
+      width: 34px; height: 34px;
+      margin-bottom: 20px;
+      color: #fff;
+    }
+    .pixel-icon svg { width: 100%; height: 100%; shape-rendering: crispEdges; }
+
+    .about-contact {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      gap: 24px;
+      padding: 50px 0 20px;
+    }
+    .about-contact-label {
+      font-size: 12px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #77756e;
+    }
+    .contact-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 26px;
+      border-radius: 999px;
+      color: #f2f0ea;
+      font-size: 12px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      text-decoration: none;
+      transition: background .15s ease;
+    }
+    .contact-btn:hover { background: rgba(255,255,255,0.1); }
+
+    @media (max-width: 760px) {
+      .about-cols { grid-template-columns: 1fr; }
+      .about-menu { gap: 16px; padding: 10px 16px; }
+      .about-menu-item { font-size: 10.5px; }
+      .about-scroll { padding-top: 170px; }
+    }
   </style>
 </head>
 <body>
@@ -520,61 +628,88 @@
 </div>
 
 <div id="archive-view" class="stub-view">
-  <div class="archive-stars"></div>
   <button class="stub-close">✕</button>
 
   <div id="archive-canvas-wrap">
-    <div id="archive-canvas-origin">
-      <div id="archive-canvas"></div>
-    </div>
+    <canvas id="archive-canvas" role="img" aria-label="Word cloud of predicted words across languages"></canvas>
+    <div id="archive-message" class="archive-empty" style="display:none;"></div>
+    <div id="archive-word-card" class="country-info-panel glass-border"></div>
   </div>
 
-  <button id="archive-filter-btn">🎚</button>
-  <div id="archive-filter-panel">
+  <nav class="about-menu about-menu--bottom glass-border">
+    <button class="about-menu-item side-menu-item" data-view="map">Explore</button>
+    <button class="about-menu-item side-menu-item active" id="archive-filter-toggle" data-view="archive">Filter</button>
+    <button class="about-menu-item side-menu-item" data-view="about">Read more</button>
+    <div class="about-menu-record">
+      Record
+      <span class="about-menu-record-dot"></span>
+    </div>
+  </nav>
+
+  <div id="archive-filter-panel" class="glass-border">
+    <button class="country-info-close" id="archive-filter-panel-close">✕</button>
     <div id="archive-filters"></div>
   </div>
 </div>
 
-<div id="archive-popup-overlay">
-  <div class="archive-popup">
-    <button class="archive-popup-close">✕</button>
-    <div id="archive-popup-content"></div>
-  </div>
-</div>
-
 <div id="about-view" class="stub-view">
-  <button class="stub-close">✕</button>
-  <div style="max-width:640px; width:100%; max-height:88vh; overflow-y:auto; display:flex; flex-direction:column; align-items:center; gap:12px;">
-    <h2>About the project</h2>
-    <p>Same words, different presumed speaker. Nothing else changes.</p>
+  <nav class="about-menu glass-border">
+    <button class="about-menu-item side-menu-item" data-view="map">Explore</button>
+    <button class="about-menu-item side-menu-item" data-view="archive">Filter</button>
+    <button class="about-menu-item side-menu-item active" data-view="about">Read more</button>
+    <div class="about-menu-record">
+      Record
+      <span class="about-menu-record-dot"></span>
+    </div>
+  </nav>
 
-    <div id="about-demo" style="width:100%;">
-      <p id="about-demo-transcript" style="font-size:13px; color:#cfcdc6; font-style:italic; text-align:center; margin-bottom:14px;"></p>
-      <div style="display:flex; gap:14px; flex-wrap:wrap; justify-content:center;">
-        <div class="memo-card" style="flex:1; min-width:230px; max-width:280px;">
-          <div class="memo-username" id="about-demo-label-a"></div>
-          <div id="about-demo-result-a"><div class="memo-loading">thinking...</div></div>
-        </div>
-        <div class="memo-card" style="flex:1; min-width:230px; max-width:280px;">
-          <div class="memo-username" id="about-demo-label-b"></div>
-          <div id="about-demo-result-b"><div class="memo-loading">thinking...</div></div>
-        </div>
-      </div>
-      <div style="display:flex; justify-content:center; margin-top:14px;">
-        <button id="about-demo-reroll" style="padding:8px 20px;border-radius:999px;border:1.5px solid #e8e6df;background:transparent;color:#e8e6df;font-size:12px;cursor:pointer;">
-          Re-roll ⟳
-        </button>
+  <div class="about-scroll">
+    <div class="about-hero">
+      <div id="about-globe" class="about-globe">
+        <div id="about-country-info" class="country-info-panel glass-border"></div>
       </div>
     </div>
 
-    <details style="width:100%; margin-top:8px; font-size:12px; color:#cfcdc6; line-height:1.6;">
-      <summary style="cursor:pointer; color:#f2f0ea; font-weight:600;">What this isn't measuring</summary>
-      <div style="padding-top:10px;">
-        <p style="margin-bottom:8px;">Accent classification only exists as a trained model for four languages — English (87% accuracy, 16 accent categories), German (75.5%, 4 categories), Spanish (68.5%, 6 categories), Italian (accuracy never published, 5 categories). Every other language is forced through the English model anyway rather than hidden behind a "not supported" message — the wrong, overconfident answer that produces is the point, not a bug being tolerated.</p>
-        <p style="margin-bottom:8px;">Emotion recognition (emotion2vec+) has no published accuracy figure at all, and like nearly every speech-emotion model, was trained overwhelmingly on English-language data.</p>
-        <p>The "acoustic features" shown elsewhere in this app (energy, tension, expressiveness) are raw waveform measurements — volume and pitch variance — not emotions. Nothing in this project can tell you how someone feels.</p>
+    <section class="about-section">
+      <h2 class="about-heading">Did you know that AI is trained on 94% english data?</h2>
+      <div class="about-cols">
+        <div class="about-col">
+          <div class="pixel-icon" data-icon="monitor"></div>
+          <p>Since its first developments back in the 80s, AI has been mostly trained on elgish. Defaulting to english means that it was also trained on a certain perspective of the word - those wo can speak it fluently.</p>
+        </div>
+        <div class="about-col">
+          <div class="pixel-icon" data-icon="chat"></div>
+          <p>Even Spanish, one of the words most speaken languages, is only supported in 20% of the dataset - creating a huge gap in halluzinations when communicating on this language. This creates a bigger acces barrier in a system that lives on the marketing of "everyone can make everything"</p>
+        </div>
+        <div class="about-col">
+          <div class="pixel-icon" data-icon="glitch"></div>
+          <p>Language has been the only way to communicate stories and heritage in communities. The bigger the gap, the more only one perspective and vision of the word is perpetuated, making us all think the same. A pattern, that we already see online thorugh the mass opinion shifting in social media.</p>
+        </div>
       </div>
-    </details>
+    </section>
+
+    <section class="about-section">
+      <h2 class="about-heading">FYI: your data is protected</h2>
+      <div class="about-cols">
+        <div class="about-col">
+          <div class="pixel-icon" data-icon="key"></div>
+          <p>In this app, your Data is stored safely under passwords - noone can reach it.</p>
+        </div>
+        <div class="about-col">
+          <div class="pixel-icon" data-icon="ghost"></div>
+          <p>Your Data is not being used to train any model or being stored anywere else as in the dataset of this project.</p>
+        </div>
+        <div class="about-col">
+          <div class="pixel-icon" data-icon="trash"></div>
+          <p>This is a University Bachelor project, where i explore AI wordviews based on language input. There is no commercial purpose. After a while, this project database will be destroyed.</p>
+        </div>
+      </div>
+    </section>
+
+    <div class="about-contact">
+      <span class="about-contact-label">Got extra questions or opinions?</span>
+      <a class="contact-btn glass-border" href="mailto:sciutorafaela@gmail.com?subject=Question%20about%20the%20hot%20take%20map%20project">Contact the owner <span>→</span></a>
+    </div>
   </div>
 </div>
 
@@ -696,8 +831,9 @@
     sideMenuItems.forEach(i => i.classList.toggle('active', i.dataset.view === view));
     document.getElementById('archive-view').classList.toggle('visible', view === 'archive');
     document.getElementById('about-view').classList.toggle('visible', view === 'about');
-    if (view === 'archive') loadArchiveIfNeeded();
-    if (view === 'about') loadAboutDemoIfNeeded();
+    if (view === 'archive') { loadArchiveIfNeeded(); startArchiveLoop(); }
+    else stopArchiveLoop();
+    if (view === 'about') loadAboutGlobeIfNeeded();
   }
   sideMenuItems.forEach(item => {
     item.addEventListener('click', () => setActiveView(item.dataset.view));
@@ -726,13 +862,14 @@
   async function loadArchiveIfNeeded() {
     resetArchivePan();
     if (archiveLoaded) return;
-    const canvasEl = document.getElementById('archive-canvas');
-    canvasEl.innerHTML = '<div class="archive-loading">Gathering the evidence...</div>';
+    const msgEl = document.getElementById('archive-message');
+    msgEl.textContent = 'Gathering the evidence...';
+    msgEl.style.display = 'flex';
     try {
       const db = window._db;
       const col = window._fbCollection;
       const get = window._fbGetDocs;
-      if (!db) { canvasEl.innerHTML = '<div class="archive-empty">Firebase not ready.</div>'; return; }
+      if (!db) { msgEl.textContent = 'Firebase not ready.'; return; }
 
       const snapshot = await get(col(db, 'memos'));
       const memos = [];
@@ -742,82 +879,228 @@
       archiveLoaded = true;
     } catch(e) {
       console.error('Archive load error:', e);
-      canvasEl.innerHTML = '<div class="archive-empty">Could not load the archive.</div>';
+      msgEl.textContent = 'Could not load the archive.';
+      msgEl.style.display = 'flex';
     }
   }
 
-  /* ====================== ABOUT — LIVE REASONING-BIAS DEMO ====================== */
-  // Same transcript, same acoustic reading, the only thing that changes between the two calls is
-  // which language the AI is told it's hearing. No accent/emotion measurement is attached to
-  // either side — this isolates one variable: does the language label alone shift the verdict?
-  const ABOUT_DEMO_TRANSCRIPT = "I think this is honestly a great idea and we should try it soon.";
-  const ABOUT_DEMO_FRAMINGS = [
-    { language: 'english', label: 'Framed as: English speaker' },
-    { language: 'hindi', label: 'Framed as: Hindi speaker' }
-  ];
-  const ABOUT_DEMO_ACOUSTIC = { Energy: 50, Expressiveness: 40, Tension: 20 };
+  /* ====================== ABOUT — INTERACTIVE COUNTRY GLOBE ====================== */
+  // Placeholder dataset — approximate figures, not sourced yet, covering a broad spread of
+  // countries so the globe reads as populated rather than empty. Each country only lists its
+  // languages + error rates; opacity is DERIVED below (never hand-picked) so two countries with
+  // similar underlying numbers can't silently end up visually identical.
+  const ABOUT_COUNTRY_DATA = {
+    ESP: { name: 'Spain', languages: [
+      { name: 'Spanish', errorRate: 10 }, { name: 'Catalan', errorRate: 35 }, { name: 'Euskera', errorRate: 54 }
+    ], note: 'Galician, Valencian: no data' },
+    GBR: { name: 'United Kingdom', languages: [{ name: 'English', errorRate: 8 }], note: 'Scots, Welsh, Gaelic: no data' },
+    DEU: { name: 'Germany', languages: [{ name: 'German', errorRate: 12 }] },
+    FRA: { name: 'France', languages: [{ name: 'French', errorRate: 9 }] },
+    ITA: { name: 'Italy', languages: [{ name: 'Italian', errorRate: 13 }] },
+    PRT: { name: 'Portugal', languages: [{ name: 'Portuguese', errorRate: 14 }] },
+    NLD: { name: 'Netherlands', languages: [{ name: 'Dutch', errorRate: 16 }] },
+    POL: { name: 'Poland', languages: [{ name: 'Polish', errorRate: 20 }] },
+    SWE: { name: 'Sweden', languages: [{ name: 'Swedish', errorRate: 18 }] },
+    RUS: { name: 'Russia', languages: [{ name: 'Russian', errorRate: 16 }], note: '100+ minority languages: no data' },
+    UKR: { name: 'Ukraine', languages: [{ name: 'Ukrainian', errorRate: 24 }] },
+    GRC: { name: 'Greece', languages: [{ name: 'Greek', errorRate: 22 }] },
+    TUR: { name: 'Turkey', languages: [{ name: 'Turkish', errorRate: 19 }], note: 'Kurdish: no data' },
+    USA: { name: 'United States', languages: [{ name: 'English', errorRate: 6 }] },
+    CAN: { name: 'Canada', languages: [
+      { name: 'English', errorRate: 7 }, { name: 'French', errorRate: 15 }
+    ], note: 'Indigenous languages: no data' },
+    MEX: { name: 'Mexico', languages: [{ name: 'Spanish', errorRate: 14 }], note: 'Nahuatl, Maya: no data' },
+    BRA: { name: 'Brazil', languages: [{ name: 'Portuguese', errorRate: 15 }] },
+    ARG: { name: 'Argentina', languages: [{ name: 'Spanish', errorRate: 13 }] },
+    COL: { name: 'Colombia', languages: [{ name: 'Spanish', errorRate: 15 }] },
+    PER: { name: 'Peru', languages: [{ name: 'Spanish', errorRate: 18 }, { name: 'Quechua', errorRate: 72 }] },
+    NGA: { name: 'Nigeria', languages: [
+      { name: 'English', errorRate: 38 }, { name: 'Hausa', errorRate: 63 }, { name: 'Yoruba', errorRate: 60 }
+    ], note: 'Igbo and 500+ other languages: no data' },
+    NER: { name: 'Niger', languages: [
+      { name: 'French', errorRate: 45 }, { name: 'Hausa', errorRate: 68 }, { name: 'Zarma', errorRate: 74 }
+    ], note: 'Other local languages: no data' },
+    MLI: { name: 'Mali', languages: [{ name: 'French', errorRate: 48 }, { name: 'Bambara', errorRate: 71 }] },
+    EGY: { name: 'Egypt', languages: [{ name: 'Arabic', errorRate: 28 }] },
+    KEN: { name: 'Kenya', languages: [{ name: 'Swahili', errorRate: 42 }, { name: 'English', errorRate: 30 }] },
+    ETH: { name: 'Ethiopia', languages: [{ name: 'Amharic', errorRate: 58 }], note: 'Oromo, Tigrinya: no data' },
+    ZAF: { name: 'South Africa', languages: [
+      { name: 'English', errorRate: 22 }, { name: 'Afrikaans', errorRate: 30 }, { name: 'Zulu', errorRate: 55 }
+    ], note: '8 other official languages: no data' },
+    MAR: { name: 'Morocco', languages: [{ name: 'Arabic', errorRate: 33 }, { name: 'French', errorRate: 20 }], note: 'Tamazight: no data' },
+    GHA: { name: 'Ghana', languages: [{ name: 'English', errorRate: 32 }], note: 'Twi, Ewe: no data' },
+    CHN: { name: 'China', languages: [{ name: 'Mandarin', errorRate: 22 }], note: 'Cantonese, Uyghur, Tibetan: no data' },
+    JPN: { name: 'Japan', languages: [{ name: 'Japanese', errorRate: 18 }] },
+    IND: { name: 'India', languages: [
+      { name: 'Hindi', errorRate: 40 }, { name: 'English', errorRate: 20 }
+    ], note: '20+ other official languages: no data' },
+    IDN: { name: 'Indonesia', languages: [{ name: 'Indonesian', errorRate: 30 }], note: '700+ regional languages: no data' },
+    PAK: { name: 'Pakistan', languages: [{ name: 'Urdu', errorRate: 44 }, { name: 'English', errorRate: 25 }], note: 'Punjabi, Pashto: no data' },
+    BGD: { name: 'Bangladesh', languages: [{ name: 'Bengali', errorRate: 38 }] },
+    VNM: { name: 'Vietnam', languages: [{ name: 'Vietnamese', errorRate: 27 }] },
+    PHL: { name: 'Philippines', languages: [{ name: 'Filipino', errorRate: 34 }, { name: 'English', errorRate: 22 }], note: 'Cebuano and others: no data' },
+    SAU: { name: 'Saudi Arabia', languages: [{ name: 'Arabic', errorRate: 26 }] },
+    KOR: { name: 'South Korea', languages: [{ name: 'Korean', errorRate: 17 }] },
+    THA: { name: 'Thailand', languages: [{ name: 'Thai', errorRate: 29 }] },
+    AUS: { name: 'Australia', languages: [{ name: 'English', errorRate: 7 }], note: 'Aboriginal languages: no data' }
+  };
 
-  let aboutDemoLoaded = false;
+  // A country's own primary language carries most of the weight; secondary/minority languages
+  // only drag the score down a bit each — mirrors the original brief (Spain reads "almost full"
+  // despite Catalan/Euskera dragging it slightly, rather than being averaged down to the same
+  // tier as a country with no dominant well-covered language at all).
+  function countryCoverageScore(languages) {
+    if (languages.length === 1) return 100 - languages[0].errorRate;
+    const restWeight = 0.25 / (languages.length - 1);
+    const weightedError = languages[0].errorRate * 0.75
+      + languages.slice(1).reduce((s, l) => s + l.errorRate * restWeight, 0);
+    return 100 - weightedError;
+  }
+  // Discrete bands, not a continuous ramp — two countries with close-but-different scores need to
+  // land in visibly different steps, not blur into the same shade of red on a dark globe.
+  function scoreToOpacity(score) {
+    if (score >= 90) return 0.97;
+    if (score >= 80) return 0.86;
+    if (score >= 70) return 0.74;
+    if (score >= 60) return 0.62;
+    if (score >= 50) return 0.50;
+    if (score >= 38) return 0.38;
+    if (score >= 25) return 0.26;
+    return 0.16;
+  }
+  Object.values(ABOUT_COUNTRY_DATA).forEach(d => {
+    d.opacity = scoreToOpacity(countryCoverageScore(d.languages));
+  });
 
-  async function runAboutSide(framing, resultElId) {
-    const el = document.getElementById(resultElId);
-    try {
-      const raw = await generateProfile({
-        language: framing.language,
-        languageMix: { primary: framing.language, primaryPct: 100, mix: [] },
-        text: ABOUT_DEMO_TRANSCRIPT,
-        acousticFeatures: ABOUT_DEMO_ACOUSTIC,
-        accentAnalysis: null,
-        whisperConfidence: null
+  let aboutMap = null;
+
+  function loadAboutGlobeIfNeeded() {
+    if (aboutMap) { requestAnimationFrame(() => aboutMap.resize()); return; }
+    initAboutGlobe();
+  }
+
+  function initAboutGlobe() {
+    aboutMap = new mapboxgl.Map({
+      container: 'about-globe',
+      style: 'mapbox://styles/mapbox/dark-v11',
+      center: [10, 30],
+      zoom: 1.65,
+      projection: 'globe',
+      attributionControl: false,
+      scrollZoom: false,
+      doubleClickZoom: false,
+      touchZoomRotate: false
+    });
+
+    aboutMap.on('style.load', () => {
+      // No star/space backdrop — the globe should blend straight into the page background
+      // instead of sitting in its own boxed-in "space" panel.
+      aboutMap.setFog({
+        color: 'rgb(24,23,21)', 'high-color': 'rgb(28,27,25)',
+        'horizon-blend': 0.015, 'space-color': 'rgb(18,18,18)', 'star-intensity': 0
       });
-      const lines = parseProfileLines(raw);
-      el.innerHTML = parsePredictionRows(profileLinesToDisplayText(lines));
-    } catch (e) {
-      console.error('About demo error:', e);
-      el.innerHTML = '<div class="memo-loading">Could not reach the model.</div>';
+
+      aboutMap.addSource('about-country-boundaries', {
+        type: 'vector', url: 'mapbox://mapbox.country-boundaries-v1'
+      });
+
+      const opacityMatch = ['match', ['get', 'iso_3166_1_alpha_3']];
+      Object.entries(ABOUT_COUNTRY_DATA).forEach(([iso, d]) => opacityMatch.push(iso, d.opacity));
+      opacityMatch.push(0);
+
+      aboutMap.addLayer({
+        id: 'about-country-fill',
+        type: 'fill',
+        source: 'about-country-boundaries',
+        'source-layer': 'country_boundaries',
+        paint: { 'fill-color': '#C92505', 'fill-opacity': opacityMatch }
+      });
+
+      aboutMap.on('mouseenter', 'about-country-fill', () => aboutMap.getCanvas().style.cursor = 'pointer');
+      aboutMap.on('mouseleave', 'about-country-fill', () => aboutMap.getCanvas().style.cursor = '');
+      aboutMap.on('click', 'about-country-fill', e => {
+        const p = e.features[0].properties;
+        renderCountryInfo(p.iso_3166_1_alpha_3, p.name_en);
+        positionCountryPanel(e.point.x, e.point.y);
+      });
+    });
+  }
+
+  // Keeps the card close to whatever was just clicked instead of parked in a fixed spot — flips
+  // to the opposite side when it would otherwise run off the globe container's edge.
+  function positionCountryPanel(x, y) {
+    const panel = document.getElementById('about-country-info');
+    const globeEl = document.getElementById('about-globe');
+    const w = globeEl.clientWidth, h = globeEl.clientHeight;
+    const panelW = 220, panelH = panel.offsetHeight || 140;
+    let left = x + 26;
+    if (left + panelW > w - 10) left = x - panelW - 26;
+    left = Math.max(10, Math.min(left, w - panelW - 10));
+    let top = Math.max(10, Math.min(y - panelH / 2, h - panelH - 10));
+    panel.style.left = left + 'px';
+    panel.style.top = top + 'px';
+  }
+
+  function closeCountryInfo() {
+    document.getElementById('about-country-info').style.display = 'none';
+  }
+  window.closeCountryInfo = closeCountryInfo;
+
+  function renderCountryInfo(iso, fallbackName) {
+    const panel = document.getElementById('about-country-info');
+    const data = ABOUT_COUNTRY_DATA[iso];
+    const closeBtn = `<button class="country-info-close" onclick="closeCountryInfo()">✕</button>`;
+    if (!data) {
+      panel.innerHTML = `${closeBtn}<div class="country-info-name">${fallbackName || iso || 'Unknown'}</div><div class="country-info-note">No data collected yet.</div>`;
+      panel.style.display = 'block';
+      return;
     }
+    const rows = data.languages.map(l =>
+      `<div class="country-info-row"><span>${l.name}</span><span>Error rate ${l.errorRate}%</span></div>`
+    ).join('');
+    panel.innerHTML = `
+      ${closeBtn}
+      <div class="country-info-name">${data.name}</div>
+      ${rows}
+      ${data.note ? `<div class="country-info-note">${data.note}</div>` : ''}
+    `;
+    panel.style.display = 'block';
   }
 
-  function runAboutDemo() {
-    document.getElementById('about-demo-transcript').textContent = `"${ABOUT_DEMO_TRANSCRIPT}"`;
-    document.getElementById('about-demo-label-a').textContent = ABOUT_DEMO_FRAMINGS[0].label;
-    document.getElementById('about-demo-label-b').textContent = ABOUT_DEMO_FRAMINGS[1].label;
-    document.getElementById('about-demo-result-a').innerHTML = '<div class="memo-loading">thinking...</div>';
-    document.getElementById('about-demo-result-b').innerHTML = '<div class="memo-loading">thinking...</div>';
-    Promise.all([
-      runAboutSide(ABOUT_DEMO_FRAMINGS[0], 'about-demo-result-a'),
-      runAboutSide(ABOUT_DEMO_FRAMINGS[1], 'about-demo-result-b')
-    ]);
+  /* ====================== ABOUT — PIXEL ICONS ====================== */
+  // Hand-placed cells on a 7x7 grid, rendered as SVG rects — kept monochrome (currentColor) so
+  // they match the "white pixel" style regardless of what colored reference icons inspired them.
+  const PIXEL_ICON_CELLS = {
+    monitor: [[1,0],[2,0],[3,0],[4,0],[5,0], [0,1],[6,1], [0,2],[6,2], [0,3],[6,3], [1,4],[2,4],[3,4],[4,4],[5,4], [3,5], [2,6],[3,6],[4,6]],
+    chat: [[1,0],[2,0],[3,0],[4,0],[5,0], [0,1],[6,1], [0,2],[2,2],[4,2],[6,2], [0,3],[6,3], [1,4],[2,4],[3,4],[4,4],[5,4], [1,5],[2,5], [0,6],[1,6]],
+    glitch: [[0,0],[1,0],[4,0], [2,1],[5,1],[6,1], [0,2],[3,2], [5,3], [1,4],[2,4],[4,4], [0,5],[6,5], [3,6],[4,6]],
+    key: [[1,0],[2,0], [0,1],[3,1],[4,1],[5,1],[6,1], [1,2],[2,2],[4,2],[6,2]],
+    ghost: [[2,0],[3,0],[4,0], [1,1],[2,1],[3,1],[4,1],[5,1], [0,2],[1,2],[2,2],[3,2],[4,2],[5,2],[6,2], [0,3],[1,3],[3,3],[5,3],[6,3], [0,4],[1,4],[2,4],[3,4],[4,4],[5,4],[6,4], [0,5],[2,5],[4,5],[6,5]],
+    trash: [[1,0],[2,0],[3,0],[4,0],[5,0], [2,1],[3,1],[4,1], [2,2],[4,2], [2,3],[4,3], [2,4],[4,4], [2,5],[4,5], [2,6],[3,6],[4,6]]
+  };
+
+  function pixelIconSVG(cells) {
+    const rects = cells.map(([x, y]) => `<rect x="${x}" y="${y}" width="1" height="1"/>`).join('');
+    return `<svg viewBox="0 0 7 7" fill="currentColor">${rects}</svg>`;
   }
 
-  function loadAboutDemoIfNeeded() {
-    if (aboutDemoLoaded) return;
-    aboutDemoLoaded = true;
-    runAboutDemo();
-  }
-
-  document.getElementById('about-demo-reroll').addEventListener('click', runAboutDemo);
+  document.querySelectorAll('.pixel-icon[data-icon]').forEach(el => {
+    const cells = PIXEL_ICON_CELLS[el.dataset.icon];
+    if (cells) el.innerHTML = pixelIconSVG(cells);
+  });
 
   let archiveGroups = {};
   let archiveActiveLanguages = new Set();
 
-  // Places clusters outward along a golden-angle spiral so they never overlap and the "world" can
-  // keep growing outward as more languages show up — order is alphabetical (not count-based) so a
-  // given language always lands in the same spot rather than shuffling as counts change.
-  function archiveClusterPosition(order) {
-    const goldenAngle = 137.508 * Math.PI / 180;
-    const angle = order * goldenAngle;
-    const radius = 90 + order * 210;
-    return { x: Math.cos(angle) * radius, y: Math.sin(angle) * radius };
-  }
-
   function renderArchive(memos) {
-    const canvasEl = document.getElementById('archive-canvas');
+    const msgEl = document.getElementById('archive-message');
     if (memos.length === 0) {
       document.getElementById('archive-filters').innerHTML = '';
-      canvasEl.innerHTML = '<div class="archive-empty">No hot takes recorded yet — be the first.</div>';
+      msgEl.textContent = 'No hot takes recorded yet — be the first.';
+      msgEl.style.display = 'flex';
       return;
     }
+    msgEl.style.display = 'none';
 
     archiveGroups = {};
     memos.forEach(m => {
@@ -830,86 +1113,228 @@
     });
 
     archiveActiveLanguages = new Set(Object.keys(archiveGroups));
-    renderArchiveFilters();
-    renderArchiveGroups();
+    buildArchiveNodes(archiveGroups);
+    renderArchiveFilterPills();
   }
 
-  function renderArchiveFilters() {
-    const filtersEl = document.getElementById('archive-filters');
+  document.getElementById('archive-filter-toggle').addEventListener('click', () => {
+    document.getElementById('archive-filter-panel').classList.toggle('open');
+  });
+  document.getElementById('archive-filter-panel-close').addEventListener('click', () => {
+    document.getElementById('archive-filter-panel').classList.remove('open');
+  });
+
+  function renderArchiveFilterPills() {
+    const el = document.getElementById('archive-filters');
     const langs = Object.keys(archiveGroups).sort();
-
-    filtersEl.innerHTML = langs.map(lang => {
-      return `<button class="archive-filter-chip active" data-lang="${lang}">${lang}</button>`;
-    }).join('');
-
-    filtersEl.querySelectorAll('.archive-filter-chip').forEach(chip => {
-      chip.addEventListener('click', () => {
-        const lang = chip.dataset.lang;
+    el.innerHTML = langs.map(lang =>
+      `<button class="archive-lang-pill${archiveActiveLanguages.has(lang) ? ' active' : ''}" data-lang="${lang}">${lang}</button>`
+    ).join('');
+    el.querySelectorAll('.archive-lang-pill').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const lang = btn.dataset.lang;
         if (archiveActiveLanguages.has(lang)) archiveActiveLanguages.delete(lang);
         else archiveActiveLanguages.add(lang);
-        chip.classList.toggle('active');
-        applyArchiveFilter();
+        btn.classList.toggle('active');
+        // no separate "apply" step — the draw/physics loop reads archiveActiveLanguages live every frame
       });
     });
   }
 
-  // Builds every cluster once (fixed position, scatter computed once) — filtering afterwards only
-  // toggles visibility, so toggling a language chip doesn't re-shuffle everyone else's scatter.
-  function renderArchiveGroups() {
-    const canvasEl = document.getElementById('archive-canvas');
-    const langs = Object.keys(archiveGroups).sort();
+  /* ---- particle field: flat scatter of word-nodes, canvas-rendered ---- */
+  let archiveNodes = [];
+  let archiveZoom = 1;
+  const ARCHIVE_ZOOM_MIN = 0.35, ARCHIVE_ZOOM_MAX = 2.5;
+  const ARCHIVE_WORDS_PER_LANG = 24;
+  const ARCHIVE_SPIRAL_SPACING = 46;
+  const ARCHIVE_RADIUS = 34;
+  const ARCHIVE_ALPHA = 0.85;
+  const ARCHIVE_FONT_SIZE = 13, ARCHIVE_MIN_FONT_SIZE = 9;
+  const ARCHIVE_REPEL_RADIUS = 170, ARCHIVE_REPEL_STRENGTH = 100, ARCHIVE_SPRING = 0.18;
+  let archiveMouseScreen = null;
+  let archiveCtx = null, archiveRafId = null;
 
-    canvasEl.innerHTML = langs.map((lang, order) => {
-      const g = archiveGroups[lang];
-      const wordEntries = Object.entries(g.words).sort((a, b) => b[1] - a[1]).slice(0, 24);
-      const maxCount = wordEntries.length ? wordEntries[0][1] : 1;
-      const pos = archiveClusterPosition(order);
-
-      const wordsHTML = wordEntries.map(([word, count]) => {
-        const scale = count / maxCount;
-        const fontSize = (12 + scale * 18).toFixed(1);
-        const alpha = (0.55 + scale * 0.45).toFixed(2);
-        // bigger/more frequent words stay closer to their neat position; smaller ones scatter more
-        const rot = ((Math.random() - 0.5) * (42 - scale * 26)).toFixed(1);
-        const tx = ((Math.random() - 0.5) * (30 - scale * 14)).toFixed(1);
-        const ty = ((Math.random() - 0.5) * (22 - scale * 10)).toFixed(1);
-        return `<span class="archive-word" style="font-size:${fontSize}px;color:rgba(255,255,255,${alpha});transform:translate(${tx}px,${ty}px) rotate(${rot}deg);">${word}</span>`;
-      }).join('');
-
-      return `
-        <div class="archive-group" data-lang="${lang}" style="transform: translate(calc(${pos.x}px - 50%), calc(${pos.y}px - 50%));">
-          <div class="archive-group-header">
-            <span class="archive-group-lang">${lang}</span>
-            <span class="archive-group-count">${g.count} memo${g.count === 1 ? '' : 's'}</span>
-          </div>
-          <div class="archive-word-cloud">${wordsHTML || '<span class="archive-empty">No predictions yet.</span>'}</div>
-        </div>
-      `;
-    }).join('');
-
-    applyArchiveFilter();
+  function shuffleArray(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
   }
 
-  function applyArchiveFilter() {
-    document.querySelectorAll('.archive-group').forEach(el => {
-      el.style.display = archiveActiveLanguages.has(el.dataset.lang) ? '' : 'none';
+  // Fibonacci/sunflower spiral — sqrt(index) radius growth keeps density roughly constant per
+  // unit area as the field grows outward, unlike the old per-cluster linear-radius spiral which
+  // was tuned for a handful of big clusters, not hundreds of individual nodes.
+  function archiveSpiralPosition(index, spacing) {
+    const goldenAngle = Math.PI * (3 - Math.sqrt(5));
+    const angle = index * goldenAngle;
+    const radius = spacing * Math.sqrt(index + 0.5);
+    return { x: Math.cos(angle) * radius, y: Math.sin(angle) * radius };
+  }
+
+  // Builds the flat node list — one circle per real word, nothing else. Every circle is the same
+  // radius/opacity (no frequency-based "depth" tiering); font size is fixed too, only shrinking
+  // (down to a floor) when a specific word is too wide to fit inside the fixed circle.
+  function buildArchiveNodes(groups) {
+    const langs = Object.keys(groups).sort();
+    const wordEntries = [];
+    langs.forEach(lang => {
+      Object.entries(groups[lang].words)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, ARCHIVE_WORDS_PER_LANG)
+        .forEach(([word, count]) => wordEntries.push({ type: 'word', lang, word, count }));
     });
+
+    const nodes = shuffleArray(wordEntries);
+    const measureCtx = document.getElementById('archive-canvas').getContext('2d');
+    const maxTextWidth = (ARCHIVE_RADIUS - 10) * 2;
+
+    nodes.forEach((n, i) => {
+      const pos = archiveSpiralPosition(i, ARCHIVE_SPIRAL_SPACING);
+      const jitter = ARCHIVE_SPIRAL_SPACING * 0.4;
+      n.homeX = pos.x + (Math.random() - 0.5) * jitter;
+      n.homeY = pos.y + (Math.random() - 0.5) * jitter;
+      n.curX = n.homeX; n.curY = n.homeY;
+      n.r = ARCHIVE_RADIUS;
+      n.alpha = ARCHIVE_ALPHA;
+
+      let fontSize = ARCHIVE_FONT_SIZE;
+      measureCtx.font = `700 ${fontSize}px 'DM Mono', monospace`;
+      while (measureCtx.measureText(n.word).width > maxTextWidth && fontSize > ARCHIVE_MIN_FONT_SIZE) {
+        fontSize -= 1;
+        measureCtx.font = `700 ${fontSize}px 'DM Mono', monospace`;
+      }
+      n.fontSize = fontSize;
+    });
+    archiveNodes = nodes;
+  }
+
+  function resizeArchiveCanvas() {
+    const canvas = document.getElementById('archive-canvas');
+    const wrap = document.getElementById('archive-canvas-wrap');
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = wrap.clientWidth * dpr;
+    canvas.height = wrap.clientHeight * dpr;
+    canvas.style.width = wrap.clientWidth + 'px';
+    canvas.style.height = wrap.clientHeight + 'px';
+    archiveCtx = canvas.getContext('2d');
+    archiveCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  window.addEventListener('resize', () => {
+    if (document.getElementById('archive-view').classList.contains('visible')) resizeArchiveCanvas();
+  });
+
+  function hitTestArchiveNode(wx, wy) {
+    for (let i = archiveNodes.length - 1; i >= 0; i--) {
+      const n = archiveNodes[i];
+      if (n.type === 'word' && !archiveActiveLanguages.has(n.lang)) continue;
+      const dx = wx - n.curX, dy = wy - n.curY;
+      if (dx * dx + dy * dy <= n.r * n.r) return n;
+    }
+    return null;
+  }
+
+  function drawArchiveNode(ctx, n) {
+    ctx.beginPath();
+    ctx.arc(n.curX, n.curY, n.r, 0, Math.PI * 2);
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = `rgba(201,37,5,${n.alpha})`;
+    ctx.stroke();
+    if (n.type === 'word') {
+      ctx.fillStyle = `rgba(201,37,5,${Math.min(1, n.alpha + 0.15)})`;
+      ctx.font = `700 ${n.fontSize}px 'DM Mono', monospace`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(n.word, n.curX, n.curY);
+    }
+  }
+
+  function drawArchiveCanvas() {
+    const wrap = document.getElementById('archive-canvas-wrap');
+    const w = wrap.clientWidth, h = wrap.clientHeight;
+    archiveCtx.clearRect(0, 0, w, h);
+    archiveCtx.save();
+    archiveCtx.translate(w / 2 + archivePanX, h / 2 + archivePanY);
+    archiveCtx.scale(archiveZoom, archiveZoom);
+    archiveNodes.forEach(n => {
+      if (n.type === 'word' && !archiveActiveLanguages.has(n.lang)) return;
+      drawArchiveNode(archiveCtx, n);
+    });
+    archiveCtx.restore();
+  }
+
+  // Mouse position is only ever stored in screen space and re-derived into world space fresh
+  // every tick — never cached as a stale world position — so zooming with the wheel without
+  // moving the mouse still repels nodes correctly.
+  function updateArchivePhysics() {
+    const wrap = document.getElementById('archive-canvas-wrap');
+    const w = wrap.clientWidth, h = wrap.clientHeight;
+    let mouseWorld = null;
+    if (archiveMouseScreen) {
+      mouseWorld = {
+        x: (archiveMouseScreen.x - w / 2 - archivePanX) / archiveZoom,
+        y: (archiveMouseScreen.y - h / 2 - archivePanY) / archiveZoom
+      };
+    }
+    archiveNodes.forEach(n => {
+      if (n.type === 'word' && !archiveActiveLanguages.has(n.lang)) return;
+      let targetX = n.homeX, targetY = n.homeY;
+      if (mouseWorld) {
+        const dx = n.homeX - mouseWorld.x, dy = n.homeY - mouseWorld.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist < ARCHIVE_REPEL_RADIUS && dist > 0.001) {
+          const falloff = 1 - dist / ARCHIVE_REPEL_RADIUS;
+          const push = falloff * falloff * ARCHIVE_REPEL_STRENGTH;
+          targetX = n.homeX + (dx / dist) * push;
+          targetY = n.homeY + (dy / dist) * push;
+        }
+      }
+      n.curX += (targetX - n.curX) * ARCHIVE_SPRING;
+      n.curY += (targetY - n.curY) * ARCHIVE_SPRING;
+    });
+  }
+
+  function archiveTick() {
+    updateArchivePhysics();
+    drawArchiveCanvas();
+    archiveRafId = requestAnimationFrame(archiveTick);
+  }
+  function startArchiveLoop() {
+    resizeArchiveCanvas();
+    if (!archiveRafId) archiveTick();
+  }
+  function stopArchiveLoop() {
+    if (archiveRafId) cancelAnimationFrame(archiveRafId);
+    archiveRafId = null;
+  }
+
+  function archiveZoomAt(mx, my, factor) {
+    const wrap = document.getElementById('archive-canvas-wrap');
+    const w = wrap.clientWidth, h = wrap.clientHeight;
+    const oldZoom = archiveZoom;
+    const newZoom = Math.min(ARCHIVE_ZOOM_MAX, Math.max(ARCHIVE_ZOOM_MIN, oldZoom * factor));
+    if (newZoom === oldZoom) return;
+    const wx = (mx - w / 2 - archivePanX) / oldZoom;
+    const wy = (my - h / 2 - archivePanY) / oldZoom;
+    archivePanX = mx - w / 2 - wx * newZoom;
+    archivePanY = my - h / 2 - wy * newZoom;
+    archiveZoom = newZoom;
+  }
+  function wireArchiveZoom() {
+    const wrap = document.getElementById('archive-canvas-wrap');
+    wrap.addEventListener('wheel', e => {
+      e.preventDefault();
+      const rect = wrap.getBoundingClientRect();
+      archiveZoomAt(e.clientX - rect.left, e.clientY - rect.top, Math.exp(-e.deltaY * 0.0015));
+    }, { passive: false });
   }
 
   /* ---- pan/drag the archive canvas (mouse + touch) ---- */
   let archivePanX = 0, archivePanY = 0;
   let archiveDragging = false, archiveDragStart = null, archivePanStart = null, archiveDidDrag = false;
 
-  function updateArchivePan() {
-    const canvasEl = document.getElementById('archive-canvas');
-    canvasEl.style.transform = `translate(${archivePanX}px, ${archivePanY}px)`;
-    const stars = document.querySelector('.archive-stars');
-    if (stars) stars.style.backgroundPosition = `${archivePanX * 0.3}px ${archivePanY * 0.3}px`;
-  }
-
   function resetArchivePan() {
-    archivePanX = 0; archivePanY = 0;
-    updateArchivePan();
+    archivePanX = 0; archivePanY = 0; archiveZoom = 1;
   }
 
   function archivePanBegin(x, y) {
@@ -925,7 +1350,6 @@
     if (Math.abs(dx) > 5 || Math.abs(dy) > 5) archiveDidDrag = true;
     archivePanX = archivePanStart.x + dx;
     archivePanY = archivePanStart.y + dy;
-    updateArchivePan();
   }
   function archivePanEnd() {
     archiveDragging = false;
@@ -934,9 +1358,23 @@
 
   function wireArchiveDrag() {
     const wrap = document.getElementById('archive-canvas-wrap');
-    wrap.addEventListener('mousedown', e => archivePanBegin(e.clientX, e.clientY));
-    window.addEventListener('mousemove', e => archivePanMove(e.clientX, e.clientY));
+    wrap.addEventListener('mousedown', e => {
+      wrap.style.cursor = '';
+      archivePanBegin(e.clientX, e.clientY);
+    });
+    window.addEventListener('mousemove', e => {
+      archivePanMove(e.clientX, e.clientY);
+      const rect = wrap.getBoundingClientRect();
+      archiveMouseScreen = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+      if (!archiveDragging) {
+        const wx = (archiveMouseScreen.x - rect.width / 2 - archivePanX) / archiveZoom;
+        const wy = (archiveMouseScreen.y - rect.height / 2 - archivePanY) / archiveZoom;
+        const hit = hitTestArchiveNode(wx, wy);
+        wrap.style.cursor = (hit && hit.type === 'word') ? 'pointer' : 'grab';
+      }
+    });
     window.addEventListener('mouseup', archivePanEnd);
+    wrap.addEventListener('mouseleave', () => { archiveMouseScreen = null; });
 
     wrap.addEventListener('touchstart', e => {
       const t = e.touches[0];
@@ -950,58 +1388,63 @@
 
     wrap.addEventListener('click', e => {
       if (archiveDidDrag) return;
-      const groupEl = e.target.closest('.archive-group');
-      if (groupEl) openArchivePopup(groupEl.dataset.lang);
+      const rect = wrap.getBoundingClientRect();
+      const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+      const wx = (mx - rect.width / 2 - archivePanX) / archiveZoom;
+      const wy = (my - rect.height / 2 - archivePanY) / archiveZoom;
+      const hit = hitTestArchiveNode(wx, wy);
+      if (hit && hit.type === 'word') openArchiveWordCard(hit, mx, my);
+      else closeArchiveWordCard();
     });
+
+    wireArchiveZoom();
   }
   wireArchiveDrag();
 
-  document.getElementById('archive-filter-btn').addEventListener('click', () => {
-    document.getElementById('archive-filter-panel').classList.toggle('open');
-  });
-
-  /* ---- cluster detail popup: top 3 words + their share of the cluster's vocabulary ---- */
-  function openArchivePopup(lang) {
-    const g = archiveGroups[lang];
-    if (!g) return;
-    const total = Object.values(g.words).reduce((s, c) => s + c, 0);
-    const top3 = Object.entries(g.words).sort((a, b) => b[1] - a[1]).slice(0, 3);
-
-    const rowsHTML = top3.map(([word, count]) => {
-      const pct = total ? Math.round((count / total) * 100) : 0;
-      return `
-        <div class="archive-popup-row">
-          <span class="archive-popup-pct">${pct}%</span>
-          <span class="archive-popup-word">${word}</span>
-        </div>
-      `;
-    }).join('') || '<div class="archive-popup-row"><span class="archive-popup-word">No predictions yet.</span></div>';
-
-    document.getElementById('archive-popup-content').innerHTML = `
-      <div class="archive-popup-lang">${lang}</div>
-      <div class="archive-popup-count">${g.count} memo${g.count === 1 ? '' : 's'}</div>
-      ${rowsHTML}
+  /* ---- word-detail card: word, language, how many memos it appeared in ---- */
+  function openArchiveWordCard(node, x, y) {
+    const card = document.getElementById('archive-word-card');
+    const g = archiveGroups[node.lang];
+    const memoCount = g ? g.count : 0;
+    card.innerHTML = `
+      <button class="country-info-close" onclick="closeArchiveWordCard()">✕</button>
+      <div class="country-info-name">${node.word}</div>
+      <div class="country-info-row"><span>Language</span><span>${node.lang}</span></div>
+      <div class="country-info-row"><span>Appeared in</span><span>${node.count} of ${memoCount} memo${memoCount === 1 ? '' : 's'}</span></div>
     `;
-    document.getElementById('archive-popup-overlay').classList.add('visible');
+    card.style.display = 'block';
+    positionArchiveWordCard(x, y);
   }
-
-  function closeArchivePopup() {
-    document.getElementById('archive-popup-overlay').classList.remove('visible');
+  function positionArchiveWordCard(x, y) {
+    const card = document.getElementById('archive-word-card');
+    const wrap = document.getElementById('archive-canvas-wrap');
+    const w = wrap.clientWidth, h = wrap.clientHeight;
+    const cardW = 220, cardH = card.offsetHeight || 120;
+    let left = x + 20;
+    if (left + cardW > w - 10) left = x - cardW - 20;
+    left = Math.max(10, Math.min(left, w - cardW - 10));
+    const top = Math.max(10, Math.min(y - cardH / 2, h - cardH - 10));
+    card.style.left = left + 'px';
+    card.style.top = top + 'px';
   }
-
-  document.querySelector('.archive-popup-close').addEventListener('click', closeArchivePopup);
-  document.getElementById('archive-popup-overlay').addEventListener('click', e => {
-    if (e.target.id === 'archive-popup-overlay') closeArchivePopup();
-  });
+  function closeArchiveWordCard() {
+    document.getElementById('archive-word-card').style.display = 'none';
+  }
+  window.closeArchiveWordCard = closeArchiveWordCard;
 
   /* ====================== MAP + KEYS ====================== */
   const MAPBOX_TOKEN = 'pk.eyJ1IjoicmFmZmFzY2l1dG8iLCJhIjoiY21xNmI5NzY3MDd4dzJyc2tsczM3eGlqdCJ9.sjkRbqczQoE09vwvkB04Sw';
 
-  // Groq calls go through a Netlify Function so the API key never reaches the client.
+  // Groq calls go through a Netlify Function so the API key never reaches the client. This header
+  // must match the APP_SHARED_SECRET env var set in the Netlify dashboard — it only raises the bar
+  // against scripts hitting the endpoint blind, since it's visible here in the page source to
+  // anyone who actually loads the app (see the comment in netlify/functions/groq.js).
+  const APP_SHARED_SECRET = '60db9a577a3f92934ccb7e7aff10af4d6008de4f7da0dc57';
+
   async function callGroqProxy(endpoint, payload) {
     const res = await fetch('/.netlify/functions/groq', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'X-App-Secret': APP_SHARED_SECRET },
       body: JSON.stringify({ endpoint, payload })
     });
     return res.json();

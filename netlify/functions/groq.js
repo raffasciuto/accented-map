@@ -2,9 +2,19 @@
 // Body: { endpoint: "transcriptions" | "chat/completions", payload }
 // "transcriptions" payload carries the audio as base64 (JSON has no multipart), which this
 // function decodes back into a real file before forwarding as multipart/form-data to Groq.
+// Shared-secret check: raises the bar against scripts hitting this endpoint blind (the URL is
+// visible in the page's own source, so this can't be a true secret against someone who actually
+// loads the page and inspects requests — the real backstop against a surprise bill is a spending
+// limit set on the Groq account itself). Only enforced once APP_SHARED_SECRET is configured in
+// Netlify, so deploying this doesn't break the app before that env var is set.
 exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, body: JSON.stringify({ error: 'Method not allowed' }) };
+  }
+
+  const sharedSecret = process.env.APP_SHARED_SECRET;
+  if (sharedSecret && event.headers['x-app-secret'] !== sharedSecret) {
+    return { statusCode: 401, body: JSON.stringify({ error: 'Unauthorized' }) };
   }
 
   const apiKey = process.env.GROQ_API_KEY;
