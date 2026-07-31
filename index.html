@@ -44,59 +44,9 @@
 
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; overflow: hidden; }
     body { font-family: system-ui, sans-serif; background: #0e0e0c; color: #e8e6df; }
-    #map { width: 100vw; height: 100vh; }
-    #ui {
-      position: fixed;
-      right: 28px;
-      left: auto;
-      top: 50%;
-      transform: translateY(-50%);
-      z-index: 10;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 10px;
-      transition: right .45s ease, left .45s ease, transform .45s ease;
-    }
-    #ui.recording {
-      right: auto;
-      left: 50%;
-      transform: translate(-50%, -50%);
-    }
-    #record-wrap {
-      position: relative;
-      width: 140px;
-      height: 140px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: width .35s ease, height .35s ease;
-    }
-    #ui.recording #record-wrap { width: 190px; height: 190px; }
-    #record-canvas {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      pointer-events: none;
-    }
-    #record-btn {
-      position: relative;
-      z-index: 2;
-      width: 84px; height: 84px;
-      border-radius: 50%;
-      border: 2px solid #e8e6df;
-      background: rgba(20,20,18,0.4);
-      color: #e8e6df;
-      font-size: 28px;
-      cursor: pointer;
-      transition: transform .2s ease, background .2s ease, border-color .2s ease;
-      backdrop-filter: blur(6px);
-    }
-    #record-btn:hover { transform: scale(1.18); background: rgba(255,255,255,0.14); }
-    #record-btn.recording { background: #E24B4A; border-color: #E24B4A; }
-    #status { font-size: 12px; color: #888780; text-align: center; max-width: 150px; }
+    #map { position: fixed; inset: 0; width: 100vw; height: 100vh; }
 
     /* LANDING ICONS */
     .icon-el { display:none; font-size:38px; line-height:1; }
@@ -122,69 +72,19 @@
 
     #enter-btn:hover { background:rgba(255,255,255,0.08); }
 
-    /* ====================== LEFT HOVER NAV ====================== */
-    #side-menu {
-      position: fixed;
-      top: 0; left: 0;
-      height: 100vh;
-      width: 16px;
-      z-index: 40;
-      display: flex;
-      align-items: center;
-    }
-    #side-menu-handle {
-      position: absolute;
-      left: 0; top: 50%;
-      transform: translateY(-50%);
-      width: 5px; height: 56px;
-      border-radius: 0 6px 6px 0;
-      background: rgba(255,255,255,0.18);
-      transition: opacity .2s ease;
-    }
-    #side-menu:hover #side-menu-handle { opacity: 0; }
-    #side-menu-panel {
-      position: absolute;
-      left: 0; top: 50%;
-      transform: translate(-100%, -50%);
-      background: rgba(25,24,28,0.94);
-      backdrop-filter: blur(12px);
-      border: 1px solid rgba(255,255,255,0.08);
-      border-left: none;
-      border-radius: 0 14px 14px 0;
-      padding: 8px 0;
-      display: flex;
-      flex-direction: column;
-      min-width: 180px;
-      transition: transform .25s ease;
-      box-shadow: 6px 0 26px rgba(0,0,0,0.4);
-    }
-    #side-menu:hover #side-menu-panel { transform: translate(0, -50%); }
-    .side-menu-item {
-      background: transparent;
-      border: none;
-      color: #cfcdc6;
-      text-align: left;
-      padding: 12px 20px;
-      font-size: 13px;
-      font-family: system-ui, sans-serif;
-      cursor: pointer;
-      transition: background .15s, color .15s;
-    }
-    .side-menu-item:hover { background: rgba(255,255,255,0.07); color: #f2f0ea; }
-    .side-menu-item.active { color: #F5A623; font-weight: 600; }
 
     .stub-view {
       position: fixed; inset: 0; z-index: 30;
       background: #0e0e0c;
-      display: none;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
+      display: block;
       text-align: center;
       padding: 40px;
       gap: 12px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .35s ease;
     }
-    .stub-view.visible { display: flex; }
+    .stub-view.visible { opacity: 1; pointer-events: auto; }
     .stub-view h2 { font-size: 22px; font-weight: 600; color: #f2f0ea; }
     .stub-view p { font-size: 14px; color: #cfcdc6; max-width: 380px; line-height: 1.6; }
     .stub-close {
@@ -198,8 +98,7 @@
 
     /* archive is a pannable/zoomable particle field, not a scrolling page — override the shared
        centered-stub layout, same page background as the About page for brand consistency */
-    #archive-view.visible { display: block; padding: 0; text-align: left; }
-    #archive-view { background: #1e1e1e; }
+    #archive-view { background: #1e1e1e; padding: 0; text-align: left; }
 
     #archive-canvas-wrap {
       position: absolute; inset: 0; z-index: 1;
@@ -262,34 +161,13 @@
       position: absolute;
       inset: 0;
       border-radius: 50%;
-      background: rgba(201,166,247,0.85);
+      background: rgba(201,37,5,0.85);
       transition: transform .25s ease, box-shadow .25s ease;
     }
     .memo-dot.fresh { animation: dotBreathe 2.2s ease-in-out infinite; }
-    .memo-dot.active {
-      transform: scale(1.6) translateY(-16px);
-      box-shadow: 0 14px 26px rgba(0,0,0,0.5);
-      z-index: 5;
-      animation: dotPulse 1s ease-in-out infinite;
-    }
-    /* vertical "stem" from the lifted dot back down to its ground point, for the 3D pop-up look */
-    .memo-dot.active::before {
-      content: '';
-      position: absolute;
-      left: 50%;
-      top: 100%;
-      width: 2px;
-      height: 20px;
-      background: linear-gradient(to bottom, rgba(201,166,247,0.9), rgba(201,166,247,0));
-      transform: translateX(-50%);
-    }
     @keyframes dotBreathe {
-      0%,100% { transform: scale(1); box-shadow: 0 0 5px rgba(201,166,247,0.35); }
-      50% { transform: scale(1.45); box-shadow: 0 0 14px rgba(201,166,247,0.9); }
-    }
-    @keyframes dotPulse {
-      0%,100% { transform: scale(1.6) translateY(-16px); }
-      50% { transform: scale(1.9) translateY(-19px); }
+      0%,100% { transform: scale(1); box-shadow: 0 0 5px rgba(201,37,5,0.35); }
+      50% { transform: scale(1.45); box-shadow: 0 0 14px rgba(201,37,5,0.9); }
     }
 
     /* ====================== MEMO POPUP CARD ====================== */
@@ -299,48 +177,106 @@
       box-shadow: none !important;
       border-radius: 16px !important;
     }
-    .mapboxgl-popup-tip { border-top-color: #19181c !important; border-bottom-color: #19181c !important; }
-    .mapboxgl-popup-close-button {
-      color: #cfcdc6; font-size: 16px; padding: 6px 10px; z-index: 2;
-    }
-    .mapboxgl-popup-close-button:hover { background: rgba(255,255,255,0.08); border-radius: 50%; }
+    .mapboxgl-popup-tip { border-top-color: #0a0909 !important; border-bottom-color: #0a0909 !important; }
 
-    .memo-card {
-      font-family: system-ui, sans-serif;
-      background: #19181c;
-      border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 14px;
-      padding: 12px;
-      min-width: 220px;
+    .memo-popup-complex {
+      position: relative;
+      font-family: 'DM Mono', 'SFMono-Regular', Menlo, monospace;
       color: #e8e6df;
+      width: 300px;
     }
-    .memo-username { font-size: 10.5px; color: #8a8880; margin-bottom: 6px; }
-    .memo-lang { font-size: 17px; font-weight: 700; color: #F5A623; letter-spacing: -0.01em; display: flex; align-items: baseline; gap: 6px; }
-    .memo-lang .memo-lang-pct { font-size: 12px; font-weight: 500; color: #cfcdc6; }
-    .memo-mix { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
-    .memo-mix span { background: rgba(255,255,255,0.08); color: #cfcdc6; padding: 2px 7px; border-radius: 6px; font-size: 9.5px; font-weight: 500; }
-    .memo-divider { height: 1px; background: rgba(255,255,255,0.08); margin: 9px 0; }
-    .memo-predictions { display: flex; flex-direction: column; gap: 5px; }
-    .memo-pred-row { display: flex; align-items: baseline; gap: 8px; font-size: 12px; }
-    .memo-pred-pct { font-weight: 700; color: #F5A623; min-width: 30px; text-align: right; }
-    .memo-pred-label { color: #e0ddd5; }
-    .memo-audio-wrap { position: relative; width: 100%; height: 150px; border-radius: 12px; overflow: hidden; background: rgba(255,255,255,0.03); }
+    .memo-popup-complex .memo-popup-close { position: absolute; top: -10px; right: 4px; z-index: 6; }
+
+    .memo-glass {
+      position: relative;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.1);
+      backdrop-filter: blur(18px) saturate(150%);
+      -webkit-backdrop-filter: blur(18px) saturate(150%);
+      box-shadow: 0 14px 34px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.05);
+    }
+    .memo-top-card {
+      position: relative;
+      background: linear-gradient(160deg, rgba(10,9,9,0.92) 0%, rgba(201,37,5,0.28) 100%);
+      padding: 14px 14px 22px;
+      width: 100%;
+    }
+    .memo-audio-wrap { position: relative; width: 100%; height: 140px; border-radius: 12px; overflow: hidden; }
     .memo-canvas { width: 100%; height: 100%; display: block; }
+
+    .memo-tag {
+      position: absolute; top: -11px; left: 18px;
+      padding: 3px 10px; border-radius: 999px;
+      background: rgba(10,9,9,0.85); border: 1px solid rgba(255,255,255,0.14);
+      font-size: 9.5px; letter-spacing: 0.06em; text-transform: uppercase; color: #cfcdc6; z-index: 2;
+    }
+
     .memo-play-btn {
-      position: absolute; bottom: 8px; left: 8px; width: 30px; height: 30px; border-radius: 50%;
-      border: 1px solid rgba(255,255,255,0.2); background: rgba(10,10,10,0.55); color: #f2f0ea;
-      cursor: pointer; font-size: 11px; display: flex; align-items: center; justify-content: center;
-      backdrop-filter: blur(4px);
+      position: absolute; bottom: -16px; right: 16px;
+      width: 36px; height: 36px; border-radius: 50%;
+      border: 1px solid rgba(255,255,255,0.18);
+      background: rgba(201,37,5,0.9); color: #fff; font-size: 12px;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 6px 16px rgba(0,0,0,0.45); z-index: 3;
+      transition: background .15s ease, transform .15s ease;
     }
-    .memo-play-btn:hover { background: rgba(10,10,10,0.75); }
-    .memo-loading { font-size: 11px; color: #8a8880; margin-top: 4px; }
-    .memo-reactions-row { display: flex; gap: 4px; }
-    .memo-reactions-row button {
-      flex: 1; padding: 5px 2px; border-radius: 7px; border: 1px solid rgba(255,255,255,0.1);
-      background: rgba(255,255,255,0.03); color: #e8e6df; cursor: pointer; font-size: 11px;
-      transition: background .15s;
+    .memo-play-btn:hover { background: #C92505; transform: scale(1.08); }
+    .memo-loading { font-size: 11px; color: #8a8880; margin-top: 8px; }
+
+    .memo-side-tabs { position: absolute; top: 16px; right: 4px; display: flex; flex-direction: column; gap: 8px; z-index: 2; }
+    .memo-tab {
+      display: flex; align-items: center; gap: 5px;
+      padding: 4px 8px; border-radius: 999px;
+      background: rgba(10,9,9,0.85); border: 1px solid rgba(255,255,255,0.14);
+      color: #e8e6df; font-size: 10px; cursor: pointer;
+      transition: background .15s ease, color .15s ease, border-color .15s ease;
     }
-    .memo-reactions-row button:hover { background: rgba(255,255,255,0.09); }
+    .memo-tab:hover { background: rgba(201,37,5,0.25); border-color: rgba(201,37,5,0.6); color: #fff; }
+    .memo-tab--info { position: relative; }
+    .memo-tab--info::after {
+      content: attr(data-tooltip);
+      position: absolute; bottom: 130%; right: 0; white-space: nowrap;
+      background: rgba(10,9,9,0.95); border: 1px solid rgba(255,255,255,0.14);
+      color: #e8e6df; padding: 6px 10px; border-radius: 8px; font-size: 10px;
+      text-transform: none; letter-spacing: normal; opacity: 0; pointer-events: none;
+      transition: opacity .15s ease; z-index: 5;
+    }
+    .memo-tab--info:hover::after { opacity: 1; }
+
+    .memo-bottom-row { display: flex; gap: 14px; margin-top: 22px; align-items: flex-start; }
+    .memo-lang-card, .memo-pred-card {
+      position: relative;
+      background: linear-gradient(160deg, rgba(10,9,9,0.9) 0%, rgba(201,37,5,0.14) 100%);
+      padding: 16px 20px; flex: 1 1 0; min-width: 0;
+    }
+    .memo-stat { display: flex; flex-direction: column; align-items: flex-start; margin-bottom: 10px; }
+    .memo-stat:last-child { margin-bottom: 0; }
+    .memo-stat-pct { font-size: 26px; font-weight: 700; color: #f2f0ea; line-height: 1; letter-spacing: -0.01em; }
+    .memo-stat-label { font-size: 10.5px; color: #8a8880; text-transform: uppercase; letter-spacing: 0.06em; margin-top: 4px; }
+    .memo-lang-row { cursor: pointer; transition: color .15s ease; }
+    .memo-lang-row:hover .memo-stat-pct, .memo-lang-row:hover .memo-stat-label { color: #C92505; }
+
+    .memo-publish-card {
+      margin-top: 14px;
+      background: linear-gradient(160deg, rgba(10,9,9,0.9) 0%, rgba(201,37,5,0.14) 100%);
+      padding: 16px 20px;
+    }
+    .memo-username-input {
+      width: 100%; padding: 8px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.14);
+      background: rgba(255,255,255,0.04); color: #e8e6df; font-family: inherit; font-size: 12px;
+      box-sizing: border-box; margin-bottom: 10px;
+    }
+    .memo-publish-caption { font-size: 11px; color: #8a8880; margin-bottom: 10px; }
+    .memo-publish-error { font-size: 11px; color: #ff6b5b; margin-bottom: 8px; }
+    .memo-publish-actions { display: flex; gap: 8px; }
+    .memo-publish-btn {
+      flex: 1; padding: 8px; border-radius: 10px; border: none;
+      background: #C92505; color: #fff; font-weight: 600; font-family: inherit;
+      font-size: 12px; cursor: pointer; transition: background .15s ease;
+    }
+    .memo-publish-btn:hover { background: #e12d09; }
+    .memo-publish-btn--ghost { background: transparent; border: 1px solid rgba(255,255,255,0.14); color: #cfcdc6; font-weight: 500; }
+    .memo-publish-btn--ghost:hover { background: rgba(255,255,255,0.08); }
 
     /* ====================== ABOUT PAGE REDESIGN ====================== */
     @property --about-angle {
@@ -380,8 +316,7 @@
     }
     @keyframes about-border-spin { to { --about-angle: 360deg; } }
 
-    #about-view { font-family: 'DM Mono', 'SFMono-Regular', Menlo, monospace; background: #1e1e1e; }
-    #about-view.visible { display: block; padding: 0; text-align: left; overflow-y: auto; }
+    #about-view { font-family: 'DM Mono', 'SFMono-Regular', Menlo, monospace; background: #1e1e1e; padding: 0; text-align: left; overflow-y: auto; }
 
     .about-menu {
       position: fixed;
@@ -393,8 +328,8 @@
       gap: 28px;
       padding: 14px 28px;
       border-radius: 999px;
+      transition: top .5s cubic-bezier(.65,0,.35,1);
     }
-    .about-menu--bottom { top: auto; bottom: 28px; }
     .about-menu-item {
       background: none;
       border: none;
@@ -419,6 +354,22 @@
       text-transform: uppercase;
       color: #6f6d66;
       user-select: none;
+      background: none;
+      border: none;
+      font-family: inherit;
+      padding: 0;
+    }
+    button.about-menu-record { cursor: pointer; }
+    button.about-menu-record:hover { color: #cfcdc6; }
+    button.about-menu-record:disabled { opacity: .4; cursor: not-allowed; pointer-events: none; }
+    .about-menu-record.recording { color: #C92505; }
+    .about-menu-record.recording .about-menu-record-dot {
+      opacity: 1;
+      animation: record-dot-pulse 1.1s ease-in-out infinite;
+    }
+    @keyframes record-dot-pulse {
+      0%,100% { transform: scale(1); box-shadow: 0 0 0 1.5px rgba(201,37,5,0.5), 0 0 0 0 rgba(201,37,5,0.55); }
+      50% { transform: scale(1.35); box-shadow: 0 0 0 1.5px rgba(201,37,5,0.8), 0 0 10px 4px rgba(201,37,5,0.35); }
     }
     .about-menu-record-dot {
       width: 10px; height: 10px;
@@ -521,6 +472,7 @@
       color: #fff;
     }
     .pixel-icon svg { width: 100%; height: 100%; shape-rendering: crispEdges; }
+    .pixel-icon--sm { width: 12px; height: 12px; margin-bottom: 0; color: inherit; flex-shrink: 0; }
 
     .about-contact {
       display: flex;
@@ -609,23 +561,16 @@
 
 <!-- MAP -->
 <div id="map"></div>
-<div id="ui">
-  <div id="record-wrap">
-    <canvas id="record-canvas"></canvas>
-    <button id="record-btn">🎙</button>
-  </div>
-  <span id="status">share your hot take</span>
-</div>
 
-<!-- LEFT HOVER NAV -->
-<div id="side-menu">
-  <div id="side-menu-handle"></div>
-  <div id="side-menu-panel">
-    <button class="side-menu-item active" data-view="map">Map</button>
-    <button class="side-menu-item" data-view="archive">AI Archive</button>
-    <button class="side-menu-item" data-view="about">About the project</button>
-  </div>
-</div>
+<nav id="app-menu" class="about-menu glass-border">
+  <button class="about-menu-item side-menu-item active" data-view="map">Explore</button>
+  <button class="about-menu-item side-menu-item" id="menu-filter-btn" data-view="archive">Filter</button>
+  <button class="about-menu-item side-menu-item" data-view="about">Read more</button>
+  <button class="about-menu-record" id="record-btn">
+    <span id="record-label">share your hot take</span>
+    <span class="about-menu-record-dot"></span>
+  </button>
+</nav>
 
 <div id="archive-view" class="stub-view">
   <button class="stub-close">✕</button>
@@ -636,16 +581,6 @@
     <div id="archive-word-card" class="country-info-panel glass-border"></div>
   </div>
 
-  <nav class="about-menu about-menu--bottom glass-border">
-    <button class="about-menu-item side-menu-item" data-view="map">Explore</button>
-    <button class="about-menu-item side-menu-item active" id="archive-filter-toggle" data-view="archive">Filter</button>
-    <button class="about-menu-item side-menu-item" data-view="about">Read more</button>
-    <div class="about-menu-record">
-      Record
-      <span class="about-menu-record-dot"></span>
-    </div>
-  </nav>
-
   <div id="archive-filter-panel" class="glass-border">
     <button class="country-info-close" id="archive-filter-panel-close">✕</button>
     <div id="archive-filters"></div>
@@ -653,16 +588,6 @@
 </div>
 
 <div id="about-view" class="stub-view">
-  <nav class="about-menu glass-border">
-    <button class="about-menu-item side-menu-item" data-view="map">Explore</button>
-    <button class="about-menu-item side-menu-item" data-view="archive">Filter</button>
-    <button class="about-menu-item side-menu-item active" data-view="about">Read more</button>
-    <div class="about-menu-record">
-      Record
-      <span class="about-menu-record-dot"></span>
-    </div>
-  </nav>
-
   <div class="about-scroll">
     <div class="about-hero">
       <div id="about-globe" class="about-globe">
@@ -806,37 +731,47 @@
     modal.style.transition = 'opacity .3s';
     modal.style.opacity = '0';
     setTimeout(() => { modal.style.display = 'none'; }, 300);
-    spinGlobeIntro();
   }
 
-  // Spins the globe on its own axis (advancing longitude), like the earth actually turning —
-  // NOT map.setBearing(), which just spins the camera in place around the same point.
-  function spinGlobeIntro(duration = 4000, degreesPerSecond = 22) {
-    const startCenter = map.getCenter();
-    const t0 = performance.now();
-    function tick(now) {
-      const elapsed = now - t0;
-      const lng = startCenter.lng - (elapsed / 1000) * degreesPerSecond;
-      map.jumpTo({ center: [lng, startCenter.lat] });
-      if (elapsed < duration) requestAnimationFrame(tick);
-    }
-    requestAnimationFrame(tick);
-  }
   document.getElementById('info-close-btn').addEventListener('click', closeInfoModal);
   document.getElementById('info-x-btn').addEventListener('click', closeInfoModal);
 
-  /* ====================== LEFT HOVER NAV ====================== */
+  /* ====================== SHARED NAV ====================== */
   const sideMenuItems = document.querySelectorAll('.side-menu-item');
+  const appMenu = document.getElementById('app-menu');
+  let currentView = 'map';
+
+  // Menu lives at a fixed top on the About page and a fixed bottom everywhere else; animating
+  // "top" (rather than switching between top/bottom CSS) is what lets the position change glide.
+  function positionAppMenu(view) {
+    appMenu.style.top = (view === 'about') ? '28px' : (window.innerHeight - 28 - appMenu.offsetHeight) + 'px';
+  }
+
   function setActiveView(view) {
+    currentView = view;
     sideMenuItems.forEach(i => i.classList.toggle('active', i.dataset.view === view));
     document.getElementById('archive-view').classList.toggle('visible', view === 'archive');
     document.getElementById('about-view').classList.toggle('visible', view === 'about');
+    document.getElementById('record-btn').disabled = (view !== 'map');
+    positionAppMenu(view);
     if (view === 'archive') { loadArchiveIfNeeded(); startArchiveLoop(); }
     else stopArchiveLoop();
     if (view === 'about') loadAboutGlobeIfNeeded();
   }
+  window.setActiveView = setActiveView;
+  positionAppMenu('map');
+  window.addEventListener('resize', () => positionAppMenu(currentView));
+
   sideMenuItems.forEach(item => {
+    if (item.id === 'menu-filter-btn') return;
     item.addEventListener('click', () => setActiveView(item.dataset.view));
+  });
+  document.getElementById('menu-filter-btn').addEventListener('click', () => {
+    if (currentView === 'archive') {
+      document.getElementById('archive-filter-panel').classList.toggle('open');
+    } else {
+      setActiveView('archive');
+    }
   });
   document.querySelectorAll('.stub-close').forEach(btn => {
     btn.addEventListener('click', () => setActiveView('map'));
@@ -996,8 +931,8 @@
       // No star/space backdrop — the globe should blend straight into the page background
       // instead of sitting in its own boxed-in "space" panel.
       aboutMap.setFog({
-        color: 'rgb(24,23,21)', 'high-color': 'rgb(28,27,25)',
-        'horizon-blend': 0.015, 'space-color': 'rgb(18,18,18)', 'star-intensity': 0
+        color: 'rgb(30,30,30)', 'high-color': 'rgb(30,30,30)',
+        'horizon-blend': 0.015, 'space-color': 'rgb(30,30,30)', 'star-intensity': 0
       });
 
       aboutMap.addSource('about-country-boundaries', {
@@ -1076,7 +1011,11 @@
     glitch: [[0,0],[1,0],[4,0], [2,1],[5,1],[6,1], [0,2],[3,2], [5,3], [1,4],[2,4],[4,4], [0,5],[6,5], [3,6],[4,6]],
     key: [[1,0],[2,0], [0,1],[3,1],[4,1],[5,1],[6,1], [1,2],[2,2],[4,2],[6,2]],
     ghost: [[2,0],[3,0],[4,0], [1,1],[2,1],[3,1],[4,1],[5,1], [0,2],[1,2],[2,2],[3,2],[4,2],[5,2],[6,2], [0,3],[1,3],[3,3],[5,3],[6,3], [0,4],[1,4],[2,4],[3,4],[4,4],[5,4],[6,4], [0,5],[2,5],[4,5],[6,5]],
-    trash: [[1,0],[2,0],[3,0],[4,0],[5,0], [2,1],[3,1],[4,1], [2,2],[4,2], [2,3],[4,3], [2,4],[4,4], [2,5],[4,5], [2,6],[3,6],[4,6]]
+    trash: [[1,0],[2,0],[3,0],[4,0],[5,0], [2,1],[3,1],[4,1], [2,2],[4,2], [2,3],[4,3], [2,4],[4,4], [2,5],[4,5], [2,6],[3,6],[4,6]],
+    heart: [[1,0],[2,0],[4,0],[5,0], [0,1],[1,1],[2,1],[3,1],[4,1],[5,1],[6,1], [0,2],[1,2],[2,2],[3,2],[4,2],[5,2],[6,2], [1,3],[2,3],[3,3],[4,3],[5,3], [2,4],[3,4],[4,4], [3,5]],
+    headstand: [[1,0],[5,0], [2,1],[4,1], [3,2], [3,3], [1,4],[3,4],[5,4], [2,5],[4,5], [1,6],[3,6],[5,6]],
+    retweet: [[1,1],[2,1],[3,1],[4,1],[5,1],[5,2],[4,2],[6,2], [1,4],[2,4],[0,4],[1,5],[2,5],[3,5],[4,5],[5,5]],
+    info: [[2,1],[3,1],[4,1], [2,3],[3,3],[4,3], [2,4],[3,4],[4,4], [2,5],[3,5],[4,5]]
   };
 
   function pixelIconSVG(cells) {
@@ -1117,9 +1056,6 @@
     renderArchiveFilterPills();
   }
 
-  document.getElementById('archive-filter-toggle').addEventListener('click', () => {
-    document.getElementById('archive-filter-panel').classList.toggle('open');
-  });
   document.getElementById('archive-filter-panel-close').addEventListener('click', () => {
     document.getElementById('archive-filter-panel').classList.remove('open');
   });
@@ -1498,11 +1434,11 @@
 
   map.on('style.load', () => {
     map.setFog({
-      color: 'rgb(30,29,26)',
-      'high-color': 'rgb(50,48,60)',
-      'horizon-blend': 0.03,
-      'space-color': 'rgb(5,5,6)',
-      'star-intensity': 0.25
+      color: 'rgb(18,18,18)',
+      'high-color': 'rgb(45,18,14)',
+      'horizon-blend': 0.04,
+      'space-color': 'rgb(9,8,8)',
+      'star-intensity': 0.5
     });
 
     // dark-v11 doesn't extrude buildings by default — without this, a pitched camera just tilts a
@@ -1535,19 +1471,70 @@
       promoteId: 'docId'
     });
 
+    // Dots are fixed-pixel by default in Mapbox GL (same screen size at any zoom) — this makes them
+    // shrink when zoomed out (far from the surface) and grow when zoomed in (close to it). Mapbox
+    // GL only allows a "zoom" expression as the TOP-LEVEL expression of a paint property (it can't
+    // be nested inside e.g. ['*', ...]), so this wraps a whole radius expression as each stop's
+    // value inside one top-level interpolate, rather than multiplying by a separate zoom factor.
+    function memoZoomScale(expr) {
+      return ['interpolate', ['linear'], ['zoom'],
+        2, ['*', 0.35, expr],
+        10, ['*', 1, expr],
+        16, ['*', 1.6, expr]
+      ];
+    }
+
     map.addLayer({
       id: 'memo-glow',
       type: 'circle',
       source: 'memos',
       paint: {
-        'circle-radius': [
+        // Active/clicked memo "interacting" feedback: a soft wave that grows outward while fading
+        // in opacity (activePulse oscillates 0..1 via the existing pulseLoop) — opacity + size only,
+        // no stroke.
+        'circle-radius': memoZoomScale([
           'case', ['boolean', ['feature-state', 'active'], false],
-          ['+', ['get', 'baseRadius'], 16, ['*', ['coalesce', ['feature-state', 'activePulse'], 0], 6]],
+          ['+', ['get', 'baseRadius'], 10, ['*', ['coalesce', ['feature-state', 'activePulse'], 0], 14]],
           0
-        ],
-        'circle-color': '#F5A623',
+        ]),
+        'circle-color': '#C92505',
         'circle-blur': 0.85,
-        'circle-opacity': ['case', ['boolean', ['feature-state', 'active'], false], 0.65, 0]
+        'circle-opacity': [
+          'case', ['boolean', ['feature-state', 'active'], false],
+          ['*', 0.65, ['-', 1, ['coalesce', ['feature-state', 'activePulse'], 0]]],
+          0
+        ]
+      }
+    });
+
+    // Highly-interacted memos read as a "bullseye" — a plain dot gains a faint outer ring once
+    // interactions >= 4, then a denser inner ring too once interactions >= 8, escalating before
+    // the center dot's own baseRadius growth saturates (~11 interactions).
+    const MEMO_INTERACTIONS_EXPR = ['+', ['get', 'likes'], ['get', 'dislikes'], ['get', 'agrees'], ['get', 'disagrees']];
+
+    map.addLayer({
+      id: 'memo-ring-outer',
+      type: 'circle',
+      source: 'memos',
+      paint: {
+        'circle-radius': memoZoomScale(['+', ['get', 'baseRadius'], 9]),
+        'circle-color': 'rgba(201,37,5,0)',
+        'circle-stroke-width': 1.5,
+        'circle-stroke-color': 'rgba(201,37,5,0.35)',
+        'circle-stroke-opacity': ['step', MEMO_INTERACTIONS_EXPR, 0, 4, 1]
+      }
+    });
+
+    map.addLayer({
+      id: 'memo-ring-mid',
+      type: 'circle',
+      source: 'memos',
+      paint: {
+        'circle-radius': memoZoomScale(['+', ['get', 'baseRadius'], 4.5]),
+        'circle-color': 'rgba(201,37,5,0)',
+        'circle-stroke-width': 1.5,
+        'circle-stroke-color': 'rgba(201,37,5,0.55)',
+        'circle-stroke-opacity': ['step', MEMO_INTERACTIONS_EXPR, 0, 8, 1]
       }
     });
 
@@ -1556,17 +1543,15 @@
       type: 'circle',
       source: 'memos',
       paint: {
-        'circle-radius': [
+        'circle-radius': memoZoomScale([
           'case',
           ['boolean', ['feature-state', 'active'], false],
           ['+', ['*', ['get', 'baseRadius'], 1.7], ['*', ['coalesce', ['feature-state', 'activePulse'], 0], 2]],
           ['get', 'fresh'],
           ['+', ['get', 'baseRadius'], ['*', ['coalesce', ['feature-state', 'pulse'], 0], 3]],
           ['get', 'baseRadius']
-        ],
-        'circle-color': ['case', ['boolean', ['feature-state', 'active'], false], '#F5A623', 'rgba(201,166,247,0.9)'],
-        'circle-stroke-width': ['case', ['boolean', ['feature-state', 'active'], false], 2, 0],
-        'circle-stroke-color': '#ffffff'
+        ]),
+        'circle-color': '#C92505'
       }
     });
 
@@ -1590,7 +1575,7 @@
       const storage = window._storage;
       if (!db || !storage) { console.log('Firebase not ready'); return; }
 
-      status.textContent = '💾 saving audio...';
+      recordLabel.textContent = '💾 saving audio...';
       const storageRef = window._storageRef;
       const uploadBytes = window._uploadBytes;
       const getDownloadURL = window._getDownloadURL;
@@ -1672,6 +1657,14 @@
   const freshPulseIds = new Set();
   let activeId = null;
   let pulseRafId = null;
+  let currentMemoPopup = null;
+  window.closeMemoPopup = () => { if (currentMemoPopup) currentMemoPopup.remove(); };
+
+  // One in-flight recording = one session, keyed by id so overlapping recordings (start #2 before
+  // deciding Publish/Delete on #1) never cross-wire — publishMemo/deleteMemo always act on the
+  // exact session whose button was clicked, never "whichever recording ran most recently."
+  let memoSessions = {};
+  let sessionCounter = 0;
 
   function addMemoFeature({ location, language, languageMix, profile, audioURL, username, docId, accentConfidencePct, likes, dislikes, agrees, disagrees, timestamp }) {
     const interactions = (likes || 0) + (dislikes || 0) + (agrees || 0) + (disagrees || 0);
@@ -1732,7 +1725,7 @@
   function openMemoPopup(feature, lngLat) {
     const p = feature.properties;
     const languageMix = p.languageMix ? JSON.parse(p.languageMix) : null;
-    const popup = new mapboxgl.Popup({ offset: 10, maxWidth: '280px' })
+    const popup = new mapboxgl.Popup({ offset: 24, maxWidth: 'none', closeButton: false, anchor: 'bottom' })
       .setLngLat(lngLat)
       .setHTML(popupHTML({
         audioURL: p.audioURL, language: p.language, languageMix,
@@ -1742,6 +1735,7 @@
       }))
       .addTo(map);
     mountMemoCanvas(popup, p.docId || p.audioURL, languageMix ? languageMix.primary : p.language);
+    currentMemoPopup = popup;
 
     activeId = p.docId;
     map.setFeatureState({ source: 'memos', id: activeId }, { active: true });
@@ -1750,74 +1744,13 @@
     popup.on('close', () => {
       map.setFeatureState({ source: 'memos', id: activeId }, { active: false, activePulse: 0 });
       activeId = null;
+      currentMemoPopup = null;
     });
-  }
-
-  /* ====================== RECORD BUTTON — LIVE MIC-REACTIVE VISUAL ====================== */
-  let recordAudioCtx = null, recordAnalyser = null, recordSource = null, recordRafId = null;
-
-  // Fixed logical size (matches the CSS "recording" enlarged size) so the buffer stays crisp
-  // whether the canvas is currently shown small (idle) or large (recording) via CSS scaling.
-  const RECORD_CANVAS_SIZE = 190;
-
-  function startRecordVisual() {
-    const canvas = document.getElementById('record-canvas');
-    const dpr = window.devicePixelRatio || 1;
-    const size = RECORD_CANVAS_SIZE;
-    canvas.width = size * dpr;
-    canvas.height = size * dpr;
-    const ctx = canvas.getContext('2d');
-    ctx.scale(dpr, dpr);
-
-    recordAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    recordSource = recordAudioCtx.createMediaStreamSource(mediaStream);
-    recordAnalyser = recordAudioCtx.createAnalyser();
-    recordAnalyser.fftSize = 256;
-    recordSource.connect(recordAnalyser); // analysis only — not connected to destination, so no mic feedback
-
-    const cx = size / 2, cy = size / 2, maxR = size / 2 - 6;
-    const cols = 11, rows = 11;
-    const cellW = (maxR * 2) / cols, cellH = (maxR * 2) / rows;
-    const cells = [];
-    for (let j = 0; j < rows; j++) {
-      for (let i = 0; i < cols; i++) {
-        const px = -maxR + (i + 0.5) * cellW;
-        const py = -maxR + (j + 0.5) * cellH;
-        const dist = Math.sqrt(px * px + py * py) / maxR;
-        const mask = Math.max(0, 1 - dist * 1.05);
-        if (mask > 0.08) cells.push({ x: cx + px, y: cy + py, base: mask, col: i });
-      }
-    }
-
-    const data = new Uint8Array(recordAnalyser.frequencyBinCount);
-    function draw() {
-      recordAnalyser.getByteFrequencyData(data);
-      ctx.clearRect(0, 0, size, size);
-      cells.forEach(c => {
-        const amp = data[Math.floor((c.col / cols) * data.length)] / 255;
-        const r = c.base * (1.6 + amp * 6);
-        const alpha = Math.min(1, 0.3 + c.base * 0.5 + amp * 0.45);
-        ctx.beginPath();
-        ctx.fillStyle = `rgba(226,75,74,${alpha})`;
-        ctx.arc(c.x, c.y, r, 0, Math.PI * 2);
-        ctx.fill();
-      });
-      recordRafId = requestAnimationFrame(draw);
-    }
-    draw();
-  }
-
-  function stopRecordVisual() {
-    if (recordRafId) cancelAnimationFrame(recordRafId);
-    recordRafId = null;
-    if (recordAudioCtx) { recordAudioCtx.close(); recordAudioCtx = null; }
-    const canvas = document.getElementById('record-canvas');
-    canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
   }
 
   /* ====================== RECORD (segmentos para idioma + grabación continua para reproducción) ====================== */
   const btn    = document.getElementById('record-btn');
-  const status = document.getElementById('status');
+  const recordLabel = document.getElementById('record-label');
   let recording = false;
   let userLocation = [13.405, 52.52];
   let mediaStream = null;
@@ -1899,12 +1832,9 @@
       segmentBlobs = [];
       recording = true;
       btn.classList.add('recording');
-      document.getElementById('ui').classList.add('recording');
-      btn.textContent = '⏹';
-      status.textContent = 'recording...';
+      recordLabel.textContent = 'recording...';
       startContinuousRecorder();
       recordOneSegment();
-      startRecordVisual();
 
     } else {
       recording = false;
@@ -1913,10 +1843,7 @@
         currentRecorder.stop();
       }
       btn.classList.remove('recording');
-      document.getElementById('ui').classList.remove('recording');
-      btn.textContent = '🎙';
-      status.textContent = 'analyzing...';
-      stopRecordVisual();
+      recordLabel.textContent = 'analyzing...';
     }
   });
 
@@ -1930,33 +1857,51 @@
   }
 
  async function runPipeline(blob, location, segmentBlobs) {
+    const sessionId = 's' + (++sessionCounter);
     const audioURL = URL.createObjectURL(blob);
 
-    const popup = new mapboxgl.Popup({ offset: 10, maxWidth: '280px' });
+    const popup = new mapboxgl.Popup({ offset: 24, maxWidth: 'none', closeButton: false, anchor: 'bottom' });
     const wrap = document.createElement('div');
     wrap.className = 'memo-dot-wrap';
     wrap.style.width = '13px';
     wrap.style.height = '13px';
     const el = document.createElement('div');
     el.className = 'memo-dot';
-    el.style.background = '#F5A623';
+    el.style.background = '#C92505';
     wrap.appendChild(el);
     const marker = new mapboxgl.Marker(wrap).setLngLat(location).setPopup(popup).addTo(map);
+
+    const session = { id: sessionId, status: 'analyzing', closed: false, blob, location, segmentBlobs, audioURL, marker, popup, wrap, el };
+    memoSessions[sessionId] = session;
+    currentMemoPopup = popup;
+
     popup.on('open', () => el.classList.add('active'));
-    popup.on('close', () => el.classList.remove('active'));
+    // Fires on ✕, on clicking elsewhere on the map (Mapbox's default closeOnClick), and on
+    // marker.remove()'s own internal popup.remove() cascade — this one handler covers all three,
+    // so an undecided draft can never linger on the map no matter how it gets dismissed.
+    popup.on('close', () => {
+      if (session.closed) return; // re-entrancy guard: marker.remove() below re-triggers this same event
+      session.closed = true;
+      el.classList.remove('active');
+      if (currentMemoPopup === popup) currentMemoPopup = null;
+      if (session.status !== 'published') {
+        marker.remove();
+        delete memoSessions[sessionId];
+        recordLabel.textContent = 'share your hot take';
+      }
+    });
     popup.setHTML(popupHTML({ audioURL, language: '...', loading: '🧠 analyzing...' }));
     mountMemoCanvas(popup, audioURL, '...');
     marker.togglePopup();
 
     try {
-      status.textContent = '🌐 detecting language...';
+      recordLabel.textContent = '🌐 detecting language...';
       const { language, text, languageMix, segmentLanguages, whisperConfidence } = await detectLanguageFromSegments(segmentBlobs);
       console.log('Language:', language, '| Mix:', languageMix);
-      const isMultiLang = !!(languageMix && languageMix.mix && languageMix.mix.length > 0);
       popup.setHTML(popupHTML({ audioURL, language, languageMix, loading: '🎙️ measuring accent + emotion...' }));
       mountMemoCanvas(popup, audioURL, language);
 
-      status.textContent = '🎙️ measuring accent + emotion...';
+      recordLabel.textContent = '🎙️ measuring accent + emotion...';
       // Independent signals — run concurrently instead of back to back.
       const [{ accent: accentAnalysis, emotion: emotionAnalysis }, acousticFeatures] = await Promise.all([
         analyzeAccentEmotion(blob, language),
@@ -1971,83 +1916,89 @@
             ? Math.round((1 - whisperConfidence.noSpeechProb) * 100) : null);
       const mixPct = languageMix ? languageMix.primaryPct : null;
 
-      status.textContent = '🎭 generating profile...';
+      recordLabel.textContent = '🎭 generating profile...';
       const rawProfile = await generateProfile({ language, languageMix, text, acousticFeatures, accentAnalysis, whisperConfidence });
       let profileLines = parseProfileLines(rawProfile);
       profileLines = applyRealPercentages(profileLines, { accentConfidencePct, mixPct });
       const profile = profileLinesToDisplayText(profileLines);
       console.log('Profile lines:', profileLines);
 
-      let langDisplay = language ? language.toUpperCase() : '...';
-      let pctDisplay = isMultiLang ? `${mixPct}%` : (accentConfidencePct !== null ? `${accentConfidencePct}%` : '...');
-      let mixDisplay = '';
-      if (isMultiLang) {
-        langDisplay = languageMix.primary.toUpperCase();
-        mixDisplay = languageMix.mix.map(m => `<span>${m.language} ${m.pct}%</span>`).join('');
-      }
+      Object.assign(session, {
+        language, languageMix, profile, accentConfidencePct, text, segmentLanguages,
+        whisperConfidence, acousticFeatures, profileLines, accentAnalysis, emotionAnalysis
+      });
+      session.status = 'ready';
 
-      popup.setHTML(`
-        <div class="memo-card">
-          <div class="memo-lang">🌐 ${langDisplay}<span class="memo-lang-pct">${pctDisplay}</span></div>
-          ${mixDisplay ? `<div class="memo-mix">${mixDisplay}</div>` : ''}
-          <div class="memo-divider"></div>
-          ${parsePredictionRows(profile)}
-          <div class="memo-divider"></div>
-          <div class="memo-audio-wrap">
-            <canvas class="memo-canvas"></canvas>
-            <button class="memo-play-btn">▶</button>
-          </div>
-          <audio class="memo-audio-el" src="${audioURL}" style="display:none;"></audio>
-          <div class="memo-divider"></div>
-          <input id="username-input" type="text" value="${generateRandomUsername()}" placeholder="Choose a name (optional)" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.03);color:#e8e6df;font-size:12px;box-sizing:border-box;margin-bottom:8px;">
-          <div style="font-size:11px;color:#8a8880;margin-bottom:8px;">Add your hot take to the map?</div>
-          <div style="display:flex;gap:8px;">
-            <button onclick="publishMemo()" style="flex:1;padding:8px;border-radius:8px;border:none;background:#F5A623;color:#19181c;font-weight:600;cursor:pointer;font-size:12px;">
-              Publish 🌍
-            </button>
-            <button onclick="deleteMemo()" style="flex:1;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#cfcdc6;cursor:pointer;font-size:12px;">
-              Delete
-            </button>
-          </div>
-        </div>
-      `);
+      popup.setHTML(popupHTML({ audioURL, language, languageMix, profile, accentConfidencePct, extraContent: publishPanelHTML(generateRandomUsername(), sessionId) }));
       mountMemoCanvas(popup, audioURL, language);
-      status.textContent = 'share your hot take';
-
-      window.publishMemo = async () => {
-        const usernameInput = document.getElementById('username-input');
-        const username = (usernameInput && usernameInput.value.trim()) || generateRandomUsername();
-
-        popup.setHTML(`
-          <div class="memo-card" style="text-align:center;color:#8a8880;">
-            💾 saving...
-          </div>
-        `);
-        const docId = await saveToFirebase({
-          location, language, languageMix, profile, blob, username,
-          transcript: text, segmentLanguages, whisperConfidence,
-          acousticFeatures, profileLines, accentAnalysis, emotionAnalysis
-        });
-        popup.setHTML(popupHTML({ audioURL, language, languageMix, profile, username, docId, accentConfidencePct, isMultiLang }));
-        mountMemoCanvas(popup, docId || audioURL, language);
-        el.style.background = 'rgba(201,166,247,0.85)';
-        wrap.style.width = '11px';
-        wrap.style.height = '11px';
-        el.classList.add('fresh');
-      };
-
-      window.deleteMemo = () => {
-        marker.remove();
-        status.textContent = 'share your hot take';
-      };
+      recordLabel.textContent = 'share your hot take';
 
     } catch(e) {
       console.error('Pipeline error:', e);
-      popup.setHTML(popupHTML({ audioURL, language: 'unknown', profile: '40% unclassifiable chaos\n35% signal lost in translation\n25% accidental philosopher' }));
+      session.language = 'unknown';
+      session.profile = '40% unclassifiable chaos\n35% signal lost in translation\n25% accidental philosopher';
+      session.status = 'ready';
+      popup.setHTML(popupHTML({
+        audioURL, language: session.language, profile: session.profile,
+        extraContent: publishPanelHTML(generateRandomUsername(), sessionId)
+      }));
       mountMemoCanvas(popup, audioURL, 'unknown');
-      status.textContent = 'share your hot take';
+      recordLabel.textContent = 'share your hot take';
     }
   }
+
+  function publishMemo(sessionId) {
+    const session = memoSessions[sessionId];
+    if (!session || session.status === 'publishing' || session.status === 'published') return;
+    session.status = 'publishing';
+
+    const input = document.getElementById('username-input-' + sessionId);
+    const username = (input && input.value.trim()) || generateRandomUsername();
+    session.username = username;
+
+    session.popup.setHTML(`<div class="memo-popup-complex"><div class="memo-top-card memo-glass" style="text-align:center;color:#8a8880;">💾 saving...</div></div>`);
+
+    saveToFirebase({
+      location: session.location, language: session.language, languageMix: session.languageMix,
+      profile: session.profile, blob: session.blob, username,
+      transcript: session.text, segmentLanguages: session.segmentLanguages,
+      whisperConfidence: session.whisperConfidence, acousticFeatures: session.acousticFeatures,
+      profileLines: session.profileLines, accentAnalysis: session.accentAnalysis, emotionAnalysis: session.emotionAnalysis
+    }).then(docId => {
+      if (!docId) {
+        session.status = 'ready';
+        session.popup.setHTML(popupHTML({
+          audioURL: session.audioURL, language: session.language, languageMix: session.languageMix,
+          profile: session.profile, accentConfidencePct: session.accentConfidencePct,
+          extraContent: publishPanelHTML(username, sessionId, "Couldn't publish — check your connection and try again.")
+        }));
+        mountMemoCanvas(session.popup, session.audioURL, session.language);
+        return;
+      }
+
+      session.status = 'published';
+      const timestamp = new Date().toISOString();
+      addMemoFeature({
+        location: session.location, language: session.language, languageMix: session.languageMix,
+        profile: session.profile, audioURL: session.audioURL, username, docId,
+        accentConfidencePct: session.accentConfidencePct, likes: 0, dislikes: 0, agrees: 0, disagrees: 0, timestamp
+      });
+      session.marker.remove();
+      delete memoSessions[sessionId];
+      recordLabel.textContent = 'share your hot take';
+
+      const feature = memoFeatureCollection.features.find(f => f.properties.docId === docId);
+      if (feature) openMemoPopup(feature, session.location);
+    });
+  }
+
+  function deleteMemo(sessionId) {
+    const session = memoSessions[sessionId];
+    if (!session) return;
+    session.popup.remove(); // fires the shared 'close' handler above, which does the actual teardown
+  }
+  window.publishMemo = publishMemo;
+  window.deleteMemo = deleteMemo;
   
   /* ====================== AUDIO-REACTIVE PIXEL CARD ====================== */
   function hashStringToInt(str) {
@@ -2064,10 +2015,6 @@
       t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
       return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
     };
-  }
-
-  function languageToHue(language) {
-    return hashStringToInt(language || 'unknown') % 360;
   }
 
   function setupCanvasPattern(canvas, seedStr, language) {
@@ -2089,23 +2036,25 @@
         const nx = i / (cols - 1) - 0.5;
         const ny = j / (rows - 1) - 0.5;
         const dist = Math.sqrt(nx * nx * 3.2 + ny * ny * 5.5);
-        const noise = (rand() - 0.5) * 0.6;
-        const mask = Math.max(0, Math.min(1, 1 - dist * 1.5 + noise));
+        // Clean, deterministic oval raster boundary — every cell inside it is always present, no
+        // ragged/randomly-missing edges. The per-memo "fingerprint" uniqueness instead comes from
+        // seedFactor varying each cell's idle size/brightness within that same clean silhouette.
+        const mask = Math.max(0, Math.min(1, 1 - dist * 1.5));
         if (mask > 0.05) {
-          cells.push({ x: (i + 0.5) * cellW, y: (j + 0.5) * cellH, base: mask, col: i });
+          const seedFactor = 0.7 + rand() * 0.6;
+          cells.push({ x: (i + 0.5) * cellW, y: (j + 0.5) * cellH, base: mask * seedFactor, col: i });
         }
       }
     }
-    const hue = languageToHue(language);
-
     function draw(amps) {
       ctx.clearRect(0, 0, rect.width, rect.height);
       cells.forEach(c => {
         const amp = amps ? amps[c.col] : 0.25;
         const size = c.base * (2.5 + amp * 11);
         const alpha = Math.min(1, 0.3 + c.base * 0.45 + amp * 0.4);
+        const lightness = 38 + amp * 26;
         ctx.beginPath();
-        ctx.fillStyle = `hsla(${hue}, 75%, 62%, ${alpha})`;
+        ctx.fillStyle = `hsla(14, 90%, ${lightness}%, ${alpha})`;
         ctx.arc(c.x, c.y, size, 0, Math.PI * 2);
         ctx.fill();
       });
@@ -2202,53 +2151,95 @@
     const lines = profile.split('\n').map(l => l.trim()).filter(Boolean);
     const rows = lines.map(line => {
       const match = line.match(/^(\d+)%\s*(.*)$/);
-      if (!match) return `<div class="memo-pred-row"><span class="memo-pred-label">${line}</span></div>`;
-      return `<div class="memo-pred-row"><span class="memo-pred-pct">${match[1]}%</span><span class="memo-pred-label">${match[2]}</span></div>`;
+      const pct = match ? match[1] : '';
+      const label = match ? match[2] : line;
+      return `<div class="memo-stat"><span class="memo-stat-pct">${pct}%</span><span class="memo-stat-label">${label}</span></div>`;
     }).join('');
     return `<div class="memo-predictions">${rows}</div>`;
   }
 
-  function popupHTML({ audioURL, language, loading, profile, languageMix, username, docId, accentConfidencePct = null, likes = 0, dislikes = 0, agrees = 0, disagrees = 0 }) {
-    let langDisplay = language ? language.toUpperCase() : '...';
+  // 3-section adaptive popup: top glass card (audio pattern + username tag + play button +
+  // headstand/heart reactions), then a bottom row of two glass cards (language/accent stats —
+  // hover/click through to the archive; AI predictions — retweet reaction + info tooltip/link to
+  // about). Each section only renders once its data actually exists, so the pipeline's progressive
+  // reveal (language → accent/emotion → profile, filled in over several setHTML calls) keeps working.
+  function popupHTML({ audioURL, language, loading, profile, languageMix, username, docId, accentConfidencePct = null, likes = 0, dislikes = 0, agrees = 0, disagrees = 0, extraContent = '' }) {
+    let langDisplay = language && language !== '...' ? language : '';
     let pctDisplay = '';
-    let mixDisplay = '';
 
     if (languageMix && languageMix.mix && languageMix.mix.length > 0) {
-      langDisplay = languageMix.primary.toUpperCase();
+      langDisplay = languageMix.primary;
       pctDisplay = `${languageMix.primaryPct}%`;
-      mixDisplay = languageMix.mix
-        .map(m => `<span>${m.language} ${m.pct}%</span>`)
-        .join('');
-    } else if (language) {
+    } else if (langDisplay) {
       // Single language: show the real accent-classifier confidence instead of a trivial ~100%
       // "presence" figure, which would say nothing since there's nothing else it could be.
       pctDisplay = accentConfidencePct !== null ? `${accentConfidencePct}%` : '100%';
     }
+    const hasLangData = !!langDisplay;
+    const hasProfileData = !!profile;
 
-    const reactionsHTML = docId ? `
-      <div class="memo-divider"></div>
-      <div class="memo-reactions-row">
-        <button onclick="reactToMemo('${docId}','likes')">👍 <span id="likes-${docId}">${likes}</span></button>
-        <button onclick="reactToMemo('${docId}','dislikes')">👎 <span id="dislikes-${docId}">${dislikes}</span></button>
-        <button onclick="reactToMemo('${docId}','agrees')">✅ <span id="agrees-${docId}">${agrees}</span></button>
-        <button onclick="reactToMemo('${docId}','disagrees')">❌ <span id="disagrees-${docId}">${disagrees}</span></button>
+    const reactBtn = (field, iconCells, count) => docId ? `
+      <button class="memo-tab" onclick="reactToMemo('${docId}','${field}')">
+        <span class="pixel-icon pixel-icon--sm">${pixelIconSVG(iconCells)}</span><span id="${field}-${docId}">${count}</span>
+      </button>` : '';
+
+    const topTabsHTML = docId ? `
+      <div class="memo-side-tabs">
+        ${reactBtn('likes', PIXEL_ICON_CELLS.headstand, likes)}
+        ${reactBtn('agrees', PIXEL_ICON_CELLS.heart, agrees)}
+      </div>` : '';
+
+    const langCardHTML = hasLangData ? `
+      <div class="memo-lang-card memo-glass">
+        <div class="memo-stat memo-lang-row" onclick="closeMemoPopup(); setActiveView('archive');">
+          <span class="memo-stat-pct">${pctDisplay || '...'}</span><span class="memo-stat-label">${langDisplay}</span>
+        </div>
+        ${((languageMix && languageMix.mix) || []).map(m => `
+          <div class="memo-stat memo-lang-row" onclick="closeMemoPopup(); setActiveView('archive');">
+            <span class="memo-stat-pct">${m.pct}%</span><span class="memo-stat-label">${m.language}</span>
+          </div>`).join('')}
+      </div>` : '';
+
+    const predCardHTML = hasProfileData ? `
+      <div class="memo-pred-card memo-glass">
+        ${parsePredictionRows(profile)}
+        <div class="memo-side-tabs">
+          ${reactBtn('disagrees', PIXEL_ICON_CELLS.retweet, disagrees)}
+          <button class="memo-tab memo-tab--info" data-tooltip="do you feel triggered by this?" onclick="closeMemoPopup(); setActiveView('about');">
+            <span class="pixel-icon pixel-icon--sm">${pixelIconSVG(PIXEL_ICON_CELLS.info)}</span>
+          </button>
+        </div>
       </div>` : '';
 
     return `
-      <div class="memo-card">
-        ${username ? `<div class="memo-username">👤 ${username}</div>` : ''}
-        <div class="memo-lang">🌐 ${langDisplay}${pctDisplay ? `<span class="memo-lang-pct">${pctDisplay}</span>` : ''}</div>
-        ${mixDisplay ? `<div class="memo-mix">${mixDisplay}</div>` : ''}
-        <div class="memo-divider"></div>
-        ${parsePredictionRows(profile)}
-        ${loading ? `<div class="memo-loading">${loading}</div>` : ''}
-        <div class="memo-divider"></div>
-        <div class="memo-audio-wrap">
-          <canvas class="memo-canvas"></canvas>
+      <div class="memo-popup-complex">
+        <button class="country-info-close memo-popup-close" onclick="closeMemoPopup()">✕</button>
+        <div class="memo-top-card memo-glass">
+          ${username ? `<span class="memo-tag">👤 ${username}</span>` : ''}
+          <div class="memo-audio-wrap"><canvas class="memo-canvas"></canvas></div>
+          <audio class="memo-audio-el" src="${audioURL}" style="display:none;"></audio>
           <button class="memo-play-btn">▶</button>
+          ${topTabsHTML}
+          ${loading ? `<div class="memo-loading">${loading}</div>` : ''}
         </div>
-        <audio class="memo-audio-el" src="${audioURL}" style="display:none;"></audio>
-        ${reactionsHTML}
+        ${(langCardHTML || predCardHTML) ? `<div class="memo-bottom-row">${langCardHTML}${predCardHTML}</div>` : ''}
+        ${extraContent}
+      </div>`;
+  }
+
+  // Pre-publish review step — passed into popupHTML() as `extraContent` (so it's nested inside the
+  // same .memo-popup-complex tree, not a second sibling root) on a docId-less call, so no reaction
+  // tabs render yet since there's no doc to react to.
+  function publishPanelHTML(usernameDefault, sessionId, errorMessage = '') {
+    return `
+      <div class="memo-publish-card memo-glass">
+        ${errorMessage ? `<div class="memo-publish-error">⚠ ${errorMessage}</div>` : ''}
+        <input id="username-input-${sessionId}" type="text" value="${usernameDefault}" placeholder="Choose a name (optional)" class="memo-username-input">
+        <div class="memo-publish-caption">Add your hot take to the map?</div>
+        <div class="memo-publish-actions">
+          <button onclick="publishMemo('${sessionId}')" class="memo-publish-btn">Publish 🌍</button>
+          <button onclick="deleteMemo('${sessionId}')" class="memo-publish-btn memo-publish-btn--ghost">Delete</button>
+        </div>
       </div>`;
   }
 
