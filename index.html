@@ -84,7 +84,7 @@
 
     let scene, camera, renderer, controls, raycaster;
     let container = null;
-    let nodeMeshes = [], linkLines = [], hubSprites = [];
+    let nodeMeshes = [], linkLines = [], hubSprites = [], languageSprites = [];
     let simulation = null;
     let rafId = null;
     let pointerDownPos = null;
@@ -137,7 +137,7 @@
       const width = container.clientWidth, height = container.clientHeight;
 
       scene = new THREE.Scene();
-      scene.background = new THREE.Color(0x1e1e1e);
+      scene.background = new THREE.Color(0x181818);
 
       camera = new THREE.PerspectiveCamera(55, width / height, 1, 5000);
       camera.position.set(0, 0, getCameraDistance(width, height));
@@ -174,7 +174,8 @@
       nodeMeshes.forEach(m => { scene.remove(m); m.geometry.dispose(); m.material.dispose(); });
       linkLines.forEach(l => { scene.remove(l); l.geometry.dispose(); l.material.dispose(); });
       hubSprites.forEach(s => { scene.remove(s); s.material.map.dispose(); s.material.dispose(); });
-      nodeMeshes = []; linkLines = []; hubSprites = [];
+      languageSprites.forEach(s => { scene.remove(s); s.material.map.dispose(); s.material.dispose(); });
+      nodeMeshes = []; linkLines = []; hubSprites = []; languageSprites = [];
     }
 
     async function buildGraphObjects(nodes, links) {
@@ -216,6 +217,18 @@
         scene.add(sprite);
         return sprite;
       });
+
+      // Language, not color, is what's meant to be visible per-node here (see the comment above
+      // ARCHIVE_TOP_K) — reusing makeHubSprite exactly as it already exists rather than inventing a
+      // new visual language just for this. Every node gets one (not just hubs), on the opposite
+      // side from the username label so the two never overlap on a hub node.
+      languageSprites = nodes.map(n => {
+        const code = (n.language || 'unknown').slice(0, 2).toUpperCase();
+        const sprite = makeHubSprite(code);
+        sprite.userData.node = n;
+        scene.add(sprite);
+        return sprite;
+      });
     }
 
     function onCanvasClick(event) {
@@ -248,6 +261,10 @@
       hubSprites.forEach(sprite => {
         const n = sprite.userData.node;
         sprite.position.set(n.x, n.y + n.r + 14, n.z);
+      });
+      languageSprites.forEach(sprite => {
+        const n = sprite.userData.node;
+        sprite.position.set(n.x, n.y - n.r - 14, n.z);
       });
     }
 
@@ -330,7 +347,7 @@
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body { height: 100%; overflow: hidden; }
-    body { font-family: system-ui, sans-serif; background: #0e0e0c; color: #e8e6df; }
+    body { font-family: system-ui, sans-serif; background: #181818; color: #e8e6df; }
     #map { position: fixed; inset: 0; width: 100vw; height: 100vh; }
 
     /* LANDING INTRO ANIMATION */
@@ -379,7 +396,7 @@
 
     /* archive is a pannable/zoomable force graph, not a scrolling page — override the shared
        centered-stub layout, same page background as the About page for brand consistency */
-    #archive-view { background: #1e1e1e; padding: 0; text-align: left; }
+    #archive-view { background: #181818; padding: 0; text-align: left; }
 
     #archive-canvas-wrap {
       position: absolute; inset: 0; z-index: 1;
@@ -515,7 +532,7 @@
       border-radius: 16px !important;
       overflow: hidden !important;
     }
-    .mapboxgl-popup-tip { border-top-color: #0a0909 !important; border-bottom-color: #0a0909 !important; }
+    .mapboxgl-popup-tip { border-top-color: #0a0909 !important; border-bottom-color: #0a0909 !important; border-left-color: #0a0909 !important; border-right-color: #0a0909 !important; }
 
     .memo-popup-complex {
       position: relative;
@@ -534,7 +551,7 @@
     .memo-popup-complex::-webkit-scrollbar-track { background: transparent; }
     .memo-popup-complex::-webkit-scrollbar-thumb { background: rgba(201,37,5,0.4); border-radius: 999px; }
     .memo-popup-complex { scrollbar-width: thin; scrollbar-color: rgba(201,37,5,0.4) transparent; }
-    .memo-popup-complex .memo-popup-close { position: absolute; top: -10px; right: 4px; z-index: 6; }
+    .memo-popup-complex .memo-popup-close { position: absolute; top: 6px; right: 4px; z-index: 6; }
 
     /* Same liquid-glass recipe as .glass-border minus the animated stroke (explicitly removed
        per feedback — kept elsewhere in the app, just not on the memo popup cards) — a separate
@@ -560,7 +577,7 @@
       position: relative;
       background: linear-gradient(-45deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.03) 30%, rgba(255,255,255,0) 55%),
                   linear-gradient(160deg, rgba(10,9,9,0.92) 0%, rgba(201,37,5,0.28) 100%);
-      padding: 14px 14px 22px;
+      padding: 14px;
       width: 100%;
     }
     .memo-audio-wrap { position: relative; width: 100%; height: 140px; border-radius: 12px; overflow: hidden; }
@@ -747,7 +764,31 @@
     #info-close-btn:hover { background: rgba(255,255,255,0.08); }
     #tour-example-popup { margin-top: 18px; transform: scale(0.82); transform-origin: top left; }
 
-    #about-view { font-family: 'DM Mono', 'SFMono-Regular', Menlo, monospace; background: #1e1e1e; padding: 0; text-align: left; overflow-y: auto; }
+    /* Shown only if the map's WebGL context is lost (a real browser/GPU event, not something the
+       app triggers) — without this, the map silently stops repainting forever with no explanation,
+       recoverable only by a manual reload the user has to think of themselves. Deliberately a small
+       top banner, not a blocking modal: the rest of the page (nav, popups) still works fine, only
+       the map canvas itself needs a reload. */
+    #map-context-lost-notice {
+      position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-12px);
+      z-index: 95;
+      display: flex; align-items: center; gap: 14px;
+      padding: 12px 16px 12px 20px; border-radius: 999px;
+      background: rgba(10,9,9,0.92); border: 1px solid rgba(255,255,255,0.14);
+      font-family: 'DM Mono', 'SFMono-Regular', Menlo, monospace; font-size: 12.5px; color: #e8e6df;
+      opacity: 0; pointer-events: none;
+      transition: opacity .3s ease, transform .3s ease;
+    }
+    #map-context-lost-notice.visible { opacity: 1; pointer-events: auto; transform: translateX(-50%) translateY(0); }
+    #map-context-lost-reload {
+      padding: 7px 16px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.2);
+      background: transparent; color: #f2f0ea; font-family: inherit;
+      font-size: 11.5px; font-weight: 400; letter-spacing: 0.04em; text-transform: uppercase;
+      cursor: pointer; transition: background .15s ease;
+    }
+    #map-context-lost-reload:hover { background: rgba(201,37,5,0.25); }
+
+    #about-view { font-family: 'DM Mono', 'SFMono-Regular', Menlo, monospace; background: #181818; padding: 0; text-align: left; overflow-y: auto; }
 
     .about-menu {
       position: fixed;
@@ -756,11 +797,55 @@
       z-index: 70;
       display: flex;
       align-items: center;
-      gap: 28px;
       padding: 14px 28px;
       border-radius: 999px;
       transition: top .5s cubic-bezier(.65,0,.35,1);
     }
+
+    /* Collapsible nav: icon/content wraps reveal via a max-width transition (0 -> a ceiling well
+       above what the content could ever need at any breakpoint), not grid-template-columns 0fr/1fr
+       — that trick needs a container with a resolved available width to size the fr track against,
+       and #app-menu (display:flex, no explicit width) is itself shrink-to-fit, which made the
+       "1fr" track resolve to some fraction of a fallback size instead of the content's true width,
+       clipping it. max-width is just a ceiling, not a forced target, so the content still renders
+       at its own natural width beneath it — no such ambiguity. They move in opposite directions so
+       the pill reads as one thing swapping faces, not an icon with leftover space beside the
+       revealed content. */
+    .app-menu-icon-wrap, .app-menu-content-wrap {
+      overflow: hidden;
+      transition: max-width .5s cubic-bezier(.65,0,.35,1);
+    }
+    .app-menu-icon-wrap { max-width: 34px; }
+    .app-menu-content-wrap { max-width: 0; }
+    #app-menu:hover .app-menu-icon-wrap,
+    #app-menu.tapped-open .app-menu-icon-wrap,
+    #app-menu.force-expanded .app-menu-icon-wrap,
+    #app-menu:focus-within .app-menu-icon-wrap { max-width: 0; }
+    #app-menu:hover .app-menu-content-wrap,
+    #app-menu.tapped-open .app-menu-content-wrap,
+    #app-menu.force-expanded .app-menu-content-wrap,
+    #app-menu:focus-within .app-menu-content-wrap { max-width: 600px; }
+
+    /* Opacity cross-fades in sync with the wraps above so the swap reads as a reveal, not a squish. */
+    .app-menu-icon-inner, .app-menu-content-inner {
+      overflow: hidden;
+      transition: opacity .4s ease;
+    }
+    .app-menu-icon-inner { display: flex; align-items: center; justify-content: center; opacity: 1; }
+    .app-menu-content-inner { display: flex; align-items: center; gap: 28px; opacity: 0; white-space: nowrap; }
+    #app-menu:hover .app-menu-icon-inner,
+    #app-menu.tapped-open .app-menu-icon-inner,
+    #app-menu.force-expanded .app-menu-icon-inner,
+    #app-menu:focus-within .app-menu-icon-inner { opacity: 0; }
+    #app-menu:hover .app-menu-content-inner,
+    #app-menu.tapped-open .app-menu-content-inner,
+    #app-menu.force-expanded .app-menu-content-inner,
+    #app-menu:focus-within .app-menu-content-inner { opacity: 1; }
+
+    .app-menu-toggle { background: none; border: none; padding: 4px; cursor: pointer; display: flex; }
+    .app-menu-hamburger { display: flex; flex-direction: column; gap: 5px; }
+    .app-menu-hamburger span { width: 22px; height: 2.5px; border-radius: 2px; background: #C92505; display: block; }
+
     .about-menu-item {
       background: none;
       border: none;
@@ -814,19 +899,19 @@
     .nav-label-short { display: none; }
 
     .about-scroll {
-      max-width: 1160px;
+      max-width: 1320px;
       margin: 0 auto;
-      padding: 160px 40px 160px;
+      padding: 110px 40px 110px;
     }
 
     .about-hero {
-      margin-bottom: 170px;
+      margin-bottom: 100px;
     }
     .about-globe-wrap {
       position: relative;
       width: 100%;
-      max-width: 1204px;
-      height: 980px;
+      max-width: 1280px;
+      height: 1040px;
       margin: 0 auto;
     }
     .about-globe { position: absolute; inset: 0; }
@@ -918,7 +1003,7 @@
        max-width here regardless of what this rule said. */
     .about-hero .about-globe-footnote {
       max-width: 560px;
-      margin: 0 auto 20px;
+      margin: 0 auto 10px;
       font-size: 9px;
       line-height: 1.6;
       color: #77756e;
@@ -952,9 +1037,40 @@
       transition: opacity .45s ease, transform .45s ease;
       padding: 30px 32px;
       border-radius: 26px;
-      background: rgba(10,9,9,0.72);
+      z-index: 0;
+      /* Same "liquid glass" recipe as .glass-border (specular sweep, inset shadow depth, animated
+         stroke below) — reused as separate declarations here rather than the shared class itself,
+         same reason .memo-glass exists: this panel already paints its own background tint via a
+         plain background-color, which would otherwise collide with a shorthand background-image. */
+      background-color: rgba(10,9,9,0.72);
+      background-image: linear-gradient(-45deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.04) 32%, rgba(255,255,255,0) 58%);
+      border: 1px solid rgba(255,255,255,0.1);
       backdrop-filter: blur(14px) saturate(140%);
       -webkit-backdrop-filter: blur(14px) saturate(140%);
+      box-shadow:
+        inset 0 1px 1px rgba(255,255,255,0.25),
+        inset 0 -8px 16px rgba(0,0,0,0.3),
+        inset 0 0 0 1px rgba(255,255,255,0.05),
+        0 20px 50px rgba(0,0,0,0.5);
+    }
+    .about-story-panel::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      padding: 1px;
+      background: conic-gradient(from var(--about-angle),
+        rgba(201,37,5,0) 0deg,
+        rgba(201,37,5,1) 50deg,
+        rgba(201,37,5,0.1) 140deg,
+        rgba(201,37,5,0.8) 230deg,
+        rgba(201,37,5,0) 360deg);
+      -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+      mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      pointer-events: none;
+      animation: about-border-spin 4.5s linear infinite;
     }
     .about-story-panel.active { opacity: 1; pointer-events: auto; transform: translateY(-50%); }
     .about-story-stat {
@@ -1015,6 +1131,19 @@
        About page's own cards ever show, so the shared fixed width above overflowed them. */
     #archive-node-card { width: auto; min-width: 220px; max-width: 300px; }
     #archive-node-card .country-info-name { word-break: break-word; }
+    #archive-node-card .archive-node-transcript {
+      font-size: 11.5px; font-style: italic; color: #cfcdc6; line-height: 1.5;
+      margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    .archive-transcript-toggle {
+      display: block; margin-top: 6px;
+      background: none; border: none; padding: 0;
+      font-family: inherit; font-size: 10px; font-style: normal;
+      color: #C92505; text-transform: uppercase; letter-spacing: 0.04em;
+      cursor: pointer;
+    }
+    .archive-transcript-toggle:hover { color: #fff; }
+
     .country-info-close {
       position: absolute;
       top: 12px; right: 12px;
@@ -1116,7 +1245,8 @@
 
     @media (max-width: 760px) {
       .about-cols { grid-template-columns: 1fr; }
-      .about-menu { gap: 16px; padding: 10px 16px; }
+      .about-menu { padding: 10px 16px; }
+      .app-menu-content-inner { gap: 16px; }
       .about-menu-item { font-size: 10.5px; }
       .about-scroll { padding-top: 170px; }
     }
@@ -1130,11 +1260,12 @@
       /* nowrap + the record-label ellipsis below are what actually keep this on one line, not
          tight padding — so padding can stay close to the desktop pill's own proportions instead
          of looking pinched. */
-      .about-menu { gap: 12px; padding: 13px 20px; }
+      .about-menu { padding: 13px 20px; }
+      .app-menu-content-inner { gap: 12px; }
       .about-menu-item { font-size: 10px; white-space: nowrap; }
       /* Same font-size as the other three items (base .about-menu-record is 12px, which read as
-         visibly bigger than the others at 10px) and margin-left zeroed out — .about-menu's own
-         gap already puts 12px before this element same as between every other item, so the
+         visibly bigger than the others at 10px) and margin-left zeroed out — .app-menu-content-inner's
+         own gap already puts 12px before this element same as between every other item, so the
          un-zeroed margin-left was stacking on top of that and doubling the gap specifically here. */
       .about-menu-record { gap: 8px; font-size: 10px; margin-left: 0; }
       #record-label {
@@ -1199,7 +1330,7 @@
 <body>
 
 <!-- LANDING / LOADING SCREEN -->
-<div id="landing" style="position:fixed;inset:0;background:#121212;z-index:100;overflow:hidden;">
+<div id="landing" style="position:fixed;inset:0;background:#181818;z-index:100;overflow:hidden;">
   <canvas id="intro-canvas"></canvas>
 
   <button id="enter-btn" class="glass-border">Enter the map →</button>
@@ -1234,17 +1365,29 @@
   <button id="tour-popup-next">Next →</button>
 </div>
 
+<div id="map-context-lost-notice">
+  <span>Map lost its display connection.</span>
+  <button id="map-context-lost-reload">Reload</button>
+</div>
+
 <!-- MAP -->
 <div id="map"></div>
 
 <nav id="app-menu" class="about-menu glass-border">
-  <button class="about-menu-item side-menu-item active" data-view="map">Explore</button>
-  <button class="about-menu-item side-menu-item" id="menu-filter-btn" data-view="archive">Filter</button>
-  <button class="about-menu-item side-menu-item" data-view="about">Read more</button>
-  <button class="about-menu-record" id="record-btn">
-    <span id="record-label"><span class="nav-label-full">share your hot take</span><span class="nav-label-short">Record</span></span>
-    <span class="about-menu-record-dot"></span>
-  </button>
+  <div class="app-menu-icon-wrap"><div class="app-menu-icon-inner">
+    <button type="button" class="app-menu-toggle" aria-label="Menu">
+      <span class="app-menu-hamburger"><span></span><span></span><span></span></span>
+    </button>
+  </div></div>
+  <div class="app-menu-content-wrap"><div class="app-menu-content-inner">
+    <button class="about-menu-item side-menu-item active" data-view="map">Explore</button>
+    <button class="about-menu-item side-menu-item" id="menu-filter-btn" data-view="archive">Filter</button>
+    <button class="about-menu-item side-menu-item" data-view="about">Read more</button>
+    <button class="about-menu-record" id="record-btn">
+      <span id="record-label"><span class="nav-label-full">share your hot take</span><span class="nav-label-short">Record</span></span>
+      <span class="about-menu-record-dot"></span>
+    </button>
+  </div></div>
 </nav>
 
 <div id="archive-view" class="stub-view">
@@ -1416,7 +1559,10 @@
     const t = now - startTime;
     const tSec = now / 1000;
 
-    const diameter = Math.min(W, H) * 0.644; // 15% larger than the original 0.56
+    // Phone: 20% bigger than the base 0.644 (which was itself already 15% larger than the
+    // original 0.56) — the globe fills most of a narrow portrait screen anyway, so this only
+    // affects the mobile case; desktop keeps the exact same 0.644 it always had.
+    const diameter = Math.min(W, H) * (W <= 480 ? 0.644 * 1.2 : 0.644);
     const cellPx = diameter / GRID_N;
 
     // The shift only exists to clear room for the enter button, which sits beside the globe
@@ -1651,6 +1797,7 @@
     tourPopup.classList.add('visible');
     document.getElementById('record-btn').disabled = true;
     document.querySelectorAll('.side-menu-item').forEach(b => b.disabled = true);
+    refreshMenuForceExpanded();
     renderTourStep(0);
   }
 
@@ -1670,6 +1817,7 @@
     document.querySelectorAll('.side-menu-item').forEach(b => b.disabled = false);
     localStorage.setItem('tourSeen', '1');
     tourStepIndex = -1;
+    refreshMenuForceExpanded();
   }
 
   tourNextBtn.addEventListener('click', advanceTour);
@@ -1679,6 +1827,51 @@
   const sideMenuItems = document.querySelectorAll('.side-menu-item');
   const appMenu = document.getElementById('app-menu');
   let currentView = 'map';
+
+  // Collapsible nav: expanded by :hover/:focus-within (pure CSS) or by .tapped-open/.force-expanded
+  // (below). force-expanded is OR'd across every reason the menu must stay open — recomputing from
+  // live state each time, rather than a blind add/remove per trigger, so one trigger's teardown
+  // can't incorrectly collapse the menu while another reason is still active (e.g. the tour ending
+  // while the filter panel also happens to be open).
+  function refreshMenuForceExpanded() {
+    const filterOpen = document.getElementById('archive-filter-panel').classList.contains('open');
+    appMenu.classList.toggle('force-expanded', filterOpen || tourStepIndex >= 0);
+  }
+  // tapped-open has no natural "pointer left" signal the way :hover does, so it needs its own
+  // idle timeout to satisfy "collapses again when not being used" — scoped to tapped-open only;
+  // force-expanded (filter panel / tour) must keep staying open regardless of idle time.
+  let menuIdleTimer = null;
+  const MENU_IDLE_MS = 3000;
+  // A clicked/tapped button keeps browser focus afterward, and #app-menu:focus-within (added so
+  // keyboard-tab users can reach the nav items) would then keep the menu visually expanded no
+  // matter what tapped-open is set to — blurring whatever's focused inside is what actually lets
+  // it collapse, not just removing the class.
+  function collapseTappedOpen() {
+    appMenu.classList.remove('tapped-open');
+    if (appMenu.contains(document.activeElement)) document.activeElement.blur();
+  }
+  function scheduleMenuIdleCollapse() {
+    clearTimeout(menuIdleTimer);
+    menuIdleTimer = setTimeout(collapseTappedOpen, MENU_IDLE_MS);
+  }
+  document.querySelector('.app-menu-toggle').addEventListener('click', (e) => {
+    e.stopPropagation();
+    const nowOpen = appMenu.classList.toggle('tapped-open');
+    if (nowOpen) scheduleMenuIdleCollapse(); else collapseTappedOpen();
+  });
+  document.addEventListener('click', (e) => {
+    if (appMenu.classList.contains('tapped-open') && !appMenu.contains(e.target)) {
+      clearTimeout(menuIdleTimer);
+      collapseTappedOpen();
+    }
+  });
+  appMenu.addEventListener('click', () => {
+    if (appMenu.classList.contains('tapped-open')) scheduleMenuIdleCollapse();
+  });
+  appMenu.addEventListener('mouseenter', () => clearTimeout(menuIdleTimer));
+  appMenu.addEventListener('mouseleave', () => {
+    if (appMenu.classList.contains('tapped-open')) scheduleMenuIdleCollapse();
+  });
 
   // The only spot recordLabel's markup needs to be the full/short span pair rather than plain
   // text — every other pipeline stage below sets a transient status string as plain text, which
@@ -1718,6 +1911,7 @@
   document.getElementById('menu-filter-btn').addEventListener('click', () => {
     if (currentView === 'archive') {
       document.getElementById('archive-filter-panel').classList.toggle('open');
+      refreshMenuForceExpanded();
     } else {
       setActiveView('archive');
     }
@@ -1728,10 +1922,17 @@
 
   /* ====================== AI ARCHIVE ====================== */
   // Force-directed graph: one node per memo (radius from reaction count), edges drawn between
-  // memos whose sentence embeddings are similar (cosine similarity above ARCHIVE_SIMILARITY_THRESHOLD).
+  // memos whose sentence embeddings are similar. Content similarity is the controlled variable
+  // here (edges), so language can be the thing that visibly varies within a connected cluster and
+  // classification the thing being read off it — an absolute cosine cutoff turned out to be the
+  // wrong tool for that: tested against this model's real embeddings, even totally unrelated
+  // sentences scored ~0.75-0.85 (a known "anisotropy" property of sentence embeddings), so any
+  // fixed threshold in that range either connects almost everything or, if raised, risks leaving
+  // some memos with zero connections. Top-K (ARCHIVE_TOP_K below) sidesteps both problems: every
+  // memo always links to its own most-similar others regardless of the model's absolute scale.
   // Refetched from Firestore every time the view opens (not just once) so a memo published after
   // the last visit actually shows up without a full page reload — negligible cost at this scale.
-  const ARCHIVE_SIMILARITY_THRESHOLD = 0.7;
+  const ARCHIVE_TOP_K = 2; // calibrated against the real embeddings currently in the DB — see below
   const ARCHIVE_NODE_MIN_R = 3, ARCHIVE_NODE_MAX_R = 9, ARCHIVE_NODE_R_SCALE = 0.6;
   const ARCHIVE_HUB_COUNT = 6;
 
@@ -1838,10 +2039,12 @@
 
     aboutMap.on('style.load', () => {
       // No star/space backdrop — the globe should blend straight into the page background
-      // instead of sitting in its own boxed-in "space" panel.
+      // instead of sitting in its own boxed-in "space" panel. Must match the page's own
+      // background exactly (#181818 = rgb(24,24,24)) or the globe's container reads as a
+      // visibly lighter rectangle against the surrounding page.
       aboutMap.setFog({
-        color: 'rgb(30,30,30)', 'high-color': 'rgb(30,30,30)',
-        'horizon-blend': 0.015, 'space-color': 'rgb(30,30,30)', 'star-intensity': 0
+        color: 'rgb(24,24,24)', 'high-color': 'rgb(24,24,24)',
+        'horizon-blend': 0.015, 'space-color': 'rgb(24,24,24)', 'star-intensity': 0
       });
 
       aboutMap.addSource('about-country-boundaries', {
@@ -1999,8 +2202,10 @@
 
   /* ====================== ABOUT — SCROLL-DRIVEN DATA STORY ====================== */
   // Same dot vocabulary as the landing intro: positions live in normalized unit space
-  // (ux/uy in [-0.5, 0.5]) and are projected to pixels once per frame, so formations are
-  // resolution-independent and morphing is just interpolating ux/uy between two target sets.
+  // (ux/uy in [-0.5, 0.5]), projected to pixels once per frame. Unlike the intro, every dot's
+  // (ux, uy) is frozen for good the moment it's assigned in build() — ALL FOUR reveals share
+  // the exact same 2160-cell grid, so "morphing" between reveals never moves a single dot; it
+  // only ever changes which opacity tier each fixed cell targets next.
   (function initAboutStory() {
     const canvas = document.getElementById('story-canvas');
     const storyEl = document.getElementById('about-story');
@@ -2015,27 +2220,38 @@
     // Each reveal holds still for the first chunk of its scroll band (reading time), then
     // morphs into the next over the remainder — so text is never moving while being read.
     const HOLD_FRACTION = 0.55;
-    const LIT_ALPHA = 0.95, DIM_ALPHA = 0.13;
+    // Every cell's "coverage" is a continuous 0..1 value (not a discrete tier) — how much of
+    // that cell's silhouette is actually ink. alpha/size are direct functions of it, so edges
+    // read as anti-aliased halftone dots instead of a jagged binary on/off cutoff. Cells at rest
+    // near 0 coverage are exactly the pool the ambient flicker field (below) pulls from, so
+    // "off" still reads as quietly alive rather than a dead gap.
+    const MAX_ALPHA = 0.95;
+    const SIZE_MIN = 0.62;
+    const AMBIENT_ALPHA = 0.22;
+    const AMBIENT_THRESHOLD = 0.05;
+    const COVERAGE_EPSILON = 0.02;
+    // Low state a dot flickers through mid-transition, mirroring the intro globe's 0.12 —
+    // deliberately target-agnostic (not lerped from the starting coverage) so every change,
+    // dimming or brightening alike, reads as the same "funk" rather than a smooth cross-fade.
+    const FLICKER_LOW_ALPHA = 0.08;
 
-    let W = 0, H = 0, dotCount = 0, dots = [], formations = [], panelsRight = 0;
+    let W = 0, H = 0, dotCount = 0, dots = [], coverageSets = [], panelsRight = 0;
+    let GRID_COLS = 0, GRID_ROWS = 0;
 
     function easeInOutCubic(t) { return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; }
-    const lerp = (a, b, t) => a + (b - a) * t;
+    const clamp01 = (t) => Math.max(0, Math.min(1, t));
 
-    // ---- shape masks: baked directly at each breakpoint's EXACT dot-grid resolution
-    // (27x20 for dotCount=540, 18x14 for dotCount=252 — see bestFactorPair below), not a finer
-    // grid subsampled down. Every one of the n dots a formation returns is one cell of this
-    // same grid, lit or not — so shape dots are guaranteed to land on the identical lattice as
-    // formationSparse/Field's plain rectangle, instead of a subsampling algorithm's arbitrary
-    // picks (which produced streaky, non-grid-aligned results). '0' = dim/background,
-    // '1' = dot (dim tier), '2' = dot (full tier). Baked offline via Playwright + canvas:
-    // rasterize the target shape (bold text / an SVG path), 2-pass-fit to center and size the
-    // ink, area-average each grid cell, threshold at 35% coverage.
-    const MASK_90PCT_540 = "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001110000011100011100011000011111000111110010110010000011001101110110110110110000011001101100110110110100000011001101100110011101100000001111101100110000001011100000101101100110000011010110011001101110110000010010110011111000111110000110010110001110000011100000100011100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
-    // Bell/opening = full tier ('2'), handle+trigger = dim tier ('1') — the flared cone and
-    // output tube sit on the high-x side of the icon, the grip and trigger on the low-x side.
-    // Sourced from Bootstrap Icons' MIT-licensed "megaphone-fill" glyph.
-    const MASK_MEGAPHONE_540 = "000000000000000000000222220000000000000000000000222220000000000000000000000222220000000000000000002220222220000000000000022222220222220000111100222222222220222220001111100222222222220222220011111100222222222220222220011111100222222222220222220011111100222222222220222220011111100222222222220222220011111100222222222220222220011111100222222222220222220001111100222222222220222220000111100222222222220222220000000000000002222220222220000001111220000002220222220000000111220000000000222220000000111220000000000222220000000011220000000000222220";
+    // ---- shape coverage: rasterized directly from the owner's own reference images (a real
+    // megaphone icon, a bold rounded "90" numeral) at the shared grid's exact 54x40 resolution —
+    // not hand-approximated geometry. Each cell is base36-encoded (0-9,a-z = 36 quantization
+    // levels, decoded below as value/35), one character per cell, giving smooth continuous
+    // coverage rather than a 3-way discrete tier. Baked offline via a Playwright+canvas pipeline:
+    // load the reference image, find its tight content bounding box, area-average (supersampled,
+    // not point-sampled) each grid cell's corresponding region into a 0..1 ink coverage value.
+    // The "%" in the 90% reveal has no source in the reference (it only shows "90") — synthesized
+    // in the same bake pass to match the digits' own measured stroke-to-diameter ratio (~1:3).
+    const COVERAGE_90PCT_2160 = "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000005983000000000000289500000000000005660000000000000001fuzzzzq8000000008qzzzzuf100000002iwzzzxk3000000000002pzzzzzzzyg000000fyzzzzzzzp2000006uzzzzzzzv60000000000nzzzzzzzzzzc0000bzzzzzzzzzzo00002uzzzzzzzzzw300000006azzzzzzzzzzzw1001wzzzzzzzzzzzb000kzzzzzzzzzzzn0000003wpzzzzqdgxzzzzd00czzzzwgdszzzzp001xzzzzlcjzzzzz300001qzxzzzu100azzzzm00kzzzz8002vzzzx009zzzzj000izzzzb0000jzzzzzzn0001zzzzn00nzzzy0000ozzzz00czzzza0006zzzzc000czzzzzzzn0000zzzzn00nzzzx0000nzzzz00azzzzg000dzzzzc006yzzzzzzzn0000zzzzn00nzzzx0000nzzzz002zzzzwc2awzzzz502vzzzzzzzzn0000zzzzn00nzzzx0000nzzzz000ozzzzzzzzzzzr01pzzzzyzzzzn0000zzzzn00nzzzx0000nzzzz0006yzzzzzzzzzy80izzzzzczzzzn0000zzzzn00nzzzx0000nzzzz0000ayzzzzzzzze0bzzzzzj0zzzzn0000zzzzn00nzzzx0000nzzzz000007szzzzzt806yzzzzp10xzzzt0008zzzzn00nzzzx0000nzzzz00000007eif7002uzzzzu300qzzzzoadvzzzzn00nzzzx0000nzzzz00000000000000pzzzzy6000czzzzzzzzzzzzn00nzzzx0000nzzzz0000000000000hzzzzzd00000qzzzzzzzzzzzn00nzzzx0000nzzzz000000000000bzzzzzk0000003szzzzzzzzzzn00nzzzx0000nzzzz000000000006xzzzzr000000001ixzzzzzzzzn00nzzzx0000nzzzz00000000002tzzzzv3000000000019dc7zzzzn00nzzzx0000nzzzz0000000000ozzzzy700blook000000000zzzzn00nzzzx0000nzzzz000000000gzzzzzd06szzzzz000000000zzzzn00nzzzx0000nzzzz00000000azzzzzl07xzzzzzz000000000zzzzn00nzzzx0000nzzzz00000005wzzzzr11vzzzzzzz000000000zzzzn00nzzzx0000nzzzz0000001tzzzzv30fzzzzzuvz000000000zzzzn00nzzzx0000nzzzz000000nzzzzy800qzzzzc00hzzzzn0000zzzzn00nzzzx0000nzzzz00000gzzzzzd000wzzzq0000zzzzo0002zzzzn00nzzzy0000ozzzz00008zzzzzm0000yzzzo0000vzzzx500hzzzzk00izzzzg007yzzzv0005wzzzzs10000szzzy600amzzzzxnqzzzzz9009zzzzzpnxzzzzm001szzzzw400000izzzzxnoy5yzzzzzzzzzzt0000szzzzzzzzzzy600mzzzzy90000003xzzzzzzz0hzzzzzzzzzy700006xzzzzzzzzzh00fzzzzzf00000000dzzzzzzz00gyzzzzzzv80000007vzzzzzzzg008yzzzzm0000000000dyzzzzz0006luzysg2000000002gryzul6002wzzzzt1000000000004iszyr00000000000000000000000000000bzzzzw5000000000000000000000000000000000000000000000003cccc60000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+    const COVERAGE_MEGAPHONE_2160 = "00000000000000000000000000000000000000gxzr8000000000000000000000000000000000000000000000007tzkaeuh000000000000000000000000000000000000000000001iyzm6ng2og0000000000000000000000000000000000000000009tzzz5rzy01od0000000000000000000000000000000000000001kzzzzv2yzp002r30000000000000000000000000000000000000buzzzzzq7zzi0007o000000000000000000000000000000000003mzzzzzzzoazzg0000jc000000000000000000000000000000000bvzzzzzzzzp9zzt20002r10000000000000000000000000000003pzzzzzzzzzzr6zzzo0000ec00000000000000000000000000000dwzzzzzzzzzzzv2zzzze0001p0000000000000000000000000005qzzzzzzzzzzzzzy2vzzzw3000i90000000000000000000000000fxzzzzzzzzzzzzzzz8rzzzzj0005n000000000000000000000007rzzzzzzzzzzzzzzzzzgjzzzzx3000p3000000000000000000000gyzzzzzzzzzzzzzzzzzzpazzzzzg000dc00000000000000000007szzzzzzzzzzzzzzzzzzzzx3xzzzzs0003l000000000000000001jyzzzzzzzzzzzzzzzzzzzzzz9nzzzzy3000n00000000000000009tzzzzzzzzzzzzzzzzzzzzzzzzlbzzzzze000k600000000000002lzzzzzzzzzzzzzzzzzzzzzzzzzzx2vzzzzn000cd000000000000auzzzzzzzzzzzzzzzzzzzzzzzzzzzzdizzzzv0005k00000000003nzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzt4yzzzz4000o000000000avzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzblzzzz9000o00000003ozzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzr4xzzze000o000000cwzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzcgzzzg000o00000lzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzv4szzh000o0000gzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzm5wzi000o0000uzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzf7wf003n0000yzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzze2100gd0000vzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzk51at10000nzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzys600000czzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzyuqmjfb74100000001uzzzzzzzzzzzzzzzzzzzzzzzzyyuyzpfb740000000000000000000bzzzzzzzzzzzzzzzzxsplheb6300uzh000000000000000000000000buzzzywsolhdazzb00000000000rzl0000000000000000000000000068720000000yzd00000000000pzm0000000000000000000000000000000000000wzg00000000000uzj0000000000000000000000000000000000000rzn0000000000azz90000000000000000000000000000000000000hzya00000001bwzr000000000000000000000000000000000000002vzykbcgkosxzzw60000000000000000000000000000000000000007wzzzzzzzzzzr6000000000000000000000000000000000000000003kwzzwsokf7000000000000000000000000";
 
     // Exact factor pair of n closest to targetRatio — guarantees cols*rows === n, so a grid
     // built from it never has a ragged/incomplete last row the way round(sqrt(n*k)) can.
@@ -2050,150 +2266,49 @@
       return best;
     }
 
-    // Generates lattice points (multiples of a shared, globally-anchored pitch) closest to
-    // (cx, cy), sorted by distance then angle for determinism — the grid-aligned replacement
-    // for continuous circle-packing, so every cluster's dots sit on one consistent underlying
-    // grid instead of smooth floating-point positions.
-    function latticeCluster(cx, cy, count, pitch) {
-      const gx0 = Math.round(cx / pitch), gy0 = Math.round(cy / pitch);
-      const halfSpan = Math.ceil(Math.sqrt(count / Math.PI)) + 2;
-      const candidates = [];
-      for (let gy = gy0 - halfSpan; gy <= gy0 + halfSpan; gy++) {
-        for (let gx = gx0 - halfSpan; gx <= gx0 + halfSpan; gx++) {
-          const x = gx * pitch, y = gy * pitch;
-          const dx = x - cx, dy = y - cy;
-          candidates.push({ gx, gy, x, y, dist: Math.sqrt(dx * dx + dy * dy), angle: Math.atan2(dy, dx) });
-        }
-      }
-      candidates.sort((a, b) => a.dist - b.dist || a.angle - b.angle);
-      return candidates.slice(0, count);
+    // ---- coverage sets: each formation is a Float32Array(dotCount) of continuous 0..1 values,
+    // one entry per fixed grid cell (same index space as `dots`) — never positions, only how
+    // much ink that cell shows.
+
+    // Reveal 1 & 4 — decode the base36-encoded, image-rasterized coverage directly.
+    function coverageFromEncoded(encoded) {
+      const out = new Float32Array(dotCount);
+      for (let k = 0; k < dotCount; k++) out[k] = parseInt(encoded[k], 36) / 35;
+      return out;
     }
 
-    // Snaps a continuous point to the nearest free lattice cell, stepping outward in a small
-    // ring search if that cell is already taken by another cluster's point.
-    function snapToLattice(x, y, pitch, taken) {
-      const gx = Math.round(x / pitch), gy = Math.round(y / pitch);
-      if (!taken.has(gx + ',' + gy)) { taken.add(gx + ',' + gy); return { gx, gy }; }
-      for (let radius = 1; radius < 6; radius++) {
-        for (let dgx = -radius; dgx <= radius; dgx++) {
-          for (let dgy = -radius; dgy <= radius; dgy++) {
-            if (Math.max(Math.abs(dgx), Math.abs(dgy)) !== radius) continue;
-            const key = (gx + dgx) + ',' + (gy + dgy);
-            if (!taken.has(key)) { taken.add(key); return { gx: gx + dgx, gy: gy + dgy }; }
-          }
-        }
-      }
-      taken.add(gx + ',' + gy + '_overflow');
-      return { gx, gy };
-    }
-
-    // ---- formations: each returns dotCount entries of { ux, uy, lit, sizeMul } ----
-
-    // Reveal 1 — dots literally form the digits "90%": every one of the n dots is one cell of
-    // the exact cols x rows grid (see bestFactorPair below), lit or not, per the baked mask
-    // above — guarantees grid alignment by construction, not by hoping a subsampler preserves it.
-    function formationBar(n) {
-      const [cols, rows] = bestFactorPair(n, 0.82 / 0.62);
-      const mask = MASK_90PCT_540;
-      const out = [];
-      for (let k = 0; k < n; k++) {
-        const i = k % cols, j = Math.floor(k / cols);
-        // sizeMul:0 (not just lit:false) for background cells — a dim-but-visible dot at every
-        // one of the 540 grid cells reads as a faint rectangular shadow behind the digits;
-        // zero-radius cells are genuinely invisible instead.
-        const ink = mask[j * cols + i] !== '0';
-        out.push({
-          ux: (i / (cols - 1) - 0.5) * 0.80,
-          uy: (rows === 1 ? 0 : (j / (rows - 1) - 0.5)) * 0.62,
-          lit: ink,
-          sizeMul: ink ? 1 : 0
-        });
+    // Reveal 2 — two clusters whose relative size encodes 4.9% of speakers vs 90% of training
+    // data, evaluated directly against each fixed grid cell's own (ux, uy) — no separate
+    // lattice/pitch, so cluster dots are the same physical dots as every other reveal, just
+    // re-covered. The small cluster's radius keeps the original's ~90%-vs-4.9% area ratio. Every
+    // edge (both circles, and the dim backdrop ring) is a smooth feathered falloff rather than a
+    // hard cutoff, so boundaries read as clean anti-aliased edges like the image-sourced shapes.
+    function coverageClusters(grid) {
+      const bigCenter = { ux: 0.20, uy: 0 }, bigRadius = 0.235;
+      const smallCenter = { ux: -0.30, uy: 0 }, smallRadius = bigRadius * Math.sqrt(26 / 486);
+      const ringCenter = { ux: -0.05, uy: 0 }, ringRadius = 0.42, ringLevel = 0.15;
+      const feather = 0.035;
+      // 1 well inside `radius`, 0 well outside, linear ramp of width `feather` centered on it.
+      const edge = (dist, radius) => clamp01(0.5 - (dist - radius) / feather);
+      const out = new Float32Array(dotCount);
+      for (let k = 0; k < dotCount; k++) {
+        const p = grid[k];
+        const db = Math.hypot(p.ux - bigCenter.ux, p.uy - bigCenter.uy);
+        const ds = Math.hypot(p.ux - smallCenter.ux, p.uy - smallCenter.uy);
+        const dr = Math.hypot(p.ux - ringCenter.ux, p.uy - ringCenter.uy);
+        const ring = ringLevel * edge(dr, ringRadius);
+        out[k] = Math.max(edge(db, bigRadius), edge(ds, smallRadius), ring);
       }
       return out;
     }
 
-    // Reveal 2 — two clusters whose dot counts encode 4.9% of speakers vs 90% of training
-    // data, now grid-snapped: both solid clusters are the `count` lattice points closest to
-    // their center, and the sparse dim backdrop keeps its original Vogel/sunflower spiral for
-    // even spread but rounds each point to the nearest free lattice cell.
-    function formationClusters(n) {
-      const smallN = Math.max(3, Math.round(n * 0.049));
-      const bigN = Math.round(n * 0.90);
-      const dimN = n - smallN - bigN;
-      const bigRadius = 0.235;
-      // Pitch derived from the target radius so the cluster's on-screen size stays consistent
-      // between mobile (n=140) and desktop (n=300) — only its internal dot density changes.
-      const pitch = bigRadius / Math.sqrt(bigN / Math.PI);
-      const taken = new Set();
-      const out = [];
-
-      latticeCluster(0.20, 0, bigN, pitch).forEach(p => {
-        taken.add(p.gx + ',' + p.gy);
-        out.push({ ux: p.x, uy: p.y, lit: true, sizeMul: 1 });
-      });
-      latticeCluster(-0.30, 0, smallN, pitch).forEach(p => {
-        taken.add(p.gx + ',' + p.gy);
-        out.push({ ux: p.x, uy: p.y, lit: true, sizeMul: 1 });
-      });
-      for (let idx = 0; idx < dimN; idx++) {
-        const r = 0.42 * Math.sqrt((idx + 0.5) / Math.max(1, dimN));
-        const theta = idx * 2.399963;
-        const { gx, gy } = snapToLattice(-0.05 + r * Math.cos(theta), r * Math.sin(theta), pitch, taken);
-        out.push({ ux: gx * pitch, uy: gy * pitch, lit: false, sizeMul: 1 });
-      }
-      return out;
-    }
-
-    // Reveal 3 — Hindi's actual 0.22% web share, drawn honestly: an exact, non-ragged
-    // rectangle (cols*rows === n by construction, via bestFactorPair) with a single dot
-    // standing out by opacity alone — same size as every other dot, never bigger.
-    function formationSparse(n) {
-      const [cols, rows] = bestFactorPair(n, 0.82 / 0.62);
-      const litCount = Math.max(1, Math.round(n * 0.0022));
-      const out = [];
-      for (let k = 0; k < n; k++) {
-        const i = k % cols, j = Math.floor(k / cols);
-        out.push({
-          ux: (i / (cols - 1) - 0.5) * 0.80,
-          uy: (rows === 1 ? 0 : (j / (rows - 1) - 0.5)) * 0.62,
-          lit: k < litCount,
-          sizeMul: 1
-        });
-      }
-      // Move the lit dot(s) to the true centre of the grid — row/col arithmetic, not a flat
-      // index offset, which lands on column 0 whenever n/2 happens to be a multiple of cols.
-      const mid = Math.floor(rows / 2) * cols + Math.floor(cols / 2);
-      for (let k = 0; k < litCount; k++) {
-        const swap = Math.min(n - 1, mid + k);
-        const a = out[k], b = out[swap];
-        const tmp = { ux: a.ux, uy: a.uy };
-        a.ux = b.ux; a.uy = b.uy;
-        b.ux = tmp.ux; b.uy = tmp.uy;
-      }
-      return out;
-    }
-
-    // Reveal 4 — a megaphone silhouette via the same baked-mask technique as reveal 1, with
-    // two static opacity tiers baked into the mask itself (bell/opening = full, handle = dim)
-    // — mirrors the intro globe's tiered land/ocean system. The existing per-dot staggered
-    // scroll-dissolve (fadeOrder, assigned in build()) is untouched and composes with this for
-    // free, since it's a separate multiplicative step in render().
-    function formationField(n) {
-      const [cols, rows] = bestFactorPair(n, 0.82 / 0.62);
-      const mask = MASK_MEGAPHONE_540;
-      const out = [];
-      for (let k = 0; k < n; k++) {
-        const i = k % cols, j = Math.floor(k / cols);
-        const c = mask[j * cols + i];
-        // Uniform full opacity across the whole shape — any ink cell ('1' or '2') is lit;
-        // sizeMul:0 for true background ('0') keeps it invisible instead of a faint shadow.
-        out.push({
-          ux: (i / (cols - 1) - 0.5) * 0.80,
-          uy: (rows === 1 ? 0 : (j / (rows - 1) - 0.5)) * 0.62,
-          lit: c !== '0',
-          sizeMul: c === '0' ? 0 : 1
-        });
-      }
+    // Reveal 3 — Hindi's actual 0.22% web share, drawn honestly: a dim rectangle field (every
+    // cell visible) with a single dot standing out by opacity alone at the true centre.
+    function coverageSparse() {
+      const out = new Float32Array(dotCount).fill(0.15);
+      const litCount = Math.max(1, Math.round(dotCount * 0.0022));
+      const mid = Math.floor(GRID_ROWS / 2) * GRID_COLS + Math.floor(GRID_COLS / 2);
+      for (let k = 0; k < litCount; k++) out[Math.min(dotCount - 1, mid + k)] = 1;
       return out;
     }
 
@@ -2201,15 +2316,43 @@
       // Same dot count on mobile as desktop — dotCount only controls shape resolution (grid
       // fineness), not visual scale (render()'s own `mobile` branch already handles that
       // separately), and "90%"/the megaphone need every bit of grid resolution they can get to
-      // stay legible as dot-matrix shapes. 540 = 27x20, an exact factor pair close to the
-      // shared 1.3226 box ratio, so formationSparse/Field's rectangle stays perfectly filled.
-      dotCount = 540;
-      formations = [formationBar(dotCount), formationClusters(dotCount), formationSparse(dotCount), formationField(dotCount)];
-      const rand = mulberry32(hashStringToInt('about-story'));
-      dots = [];
+      // stay legible as dot-matrix shapes. 2160 = 54x40, an exact factor pair close to the
+      // shared 1.3226 box ratio — double the original 540/27x20 in both dimensions, for
+      // noticeably denser, crisper dots (this also directly fixes Clusters, which used to pack
+      // its two circles at their own separate, much finer pitch than the rest of the grid; on
+      // the shared grid a coarse 540-cell resolution made that circle read as a sparse, gappy
+      // cloud instead of a solid-looking blob — doubling density fixes that with zero formation-
+      // specific code, since coverageClusters/coverageSparse are resolution-independent formulas).
+      dotCount = 2160;
+      [GRID_COLS, GRID_ROWS] = bestFactorPair(dotCount, 0.82 / 0.62);
+
+      const grid = [];
       for (let k = 0; k < dotCount; k++) {
-        dots.push({ ux: formations[0][k].ux, uy: formations[0][k].uy, fadeOrder: rand() });
+        const i = k % GRID_COLS, j = Math.floor(k / GRID_COLS);
+        grid.push({
+          ux: (i / (GRID_COLS - 1) - 0.5) * 0.80,
+          uy: (GRID_ROWS === 1 ? 0 : (j / (GRID_ROWS - 1) - 0.5)) * 0.62
+        });
       }
+
+      coverageSets = [coverageFromEncoded(COVERAGE_90PCT_2160), coverageClusters(grid), coverageSparse(), coverageFromEncoded(COVERAGE_MEGAPHONE_2160)];
+
+      const rand = mulberry32(hashStringToInt('about-story'));
+      dots = grid.map(p => ({
+        ux: p.ux, uy: p.uy,
+        fadeOrder: rand(),
+        // Per-dot flicker timing, expressed as fractions of the transition's own morph (0..1),
+        // not wall-clock ms — the same sine-vs-shrinking-threshold shape as the intro globe's
+        // entrance flicker, but driven by scroll progress so it's fully scrub-safe: scrolling
+        // backward re-plays the identical curve in reverse instead of racing forward in time.
+        seed: rand() * Math.PI * 2,
+        flickerStart: rand() * 0.45,
+        flickerDur: 0.3 + rand() * 0.35,
+        // Ambient background flicker (tier-0 cells only) — independent, continuous, wall-clock
+        // driven, since it's decorative texture rather than reading content.
+        ambSeed: rand(),
+        ambSpeed: 0.35 + rand() * 0.5
+      }));
     }
 
     function resize() {
@@ -2246,9 +2389,7 @@
       const local = Math.min(1, p * REVEAL_COUNT - band);
       setActivePanel(band);
 
-      const from = formations[band];
       const isLast = band >= REVEAL_COUNT - 1;
-      const to = isLast ? from : formations[band + 1];
       const morph = local <= HOLD_FRACTION ? 0 : easeInOutCubic((local - HOLD_FRACTION) / (1 - HOLD_FRACTION));
 
       // Final reveal dissolves instead of morphing: each dot has its own point in the band
@@ -2272,30 +2413,67 @@
       const maxScaleForClearance = (!mobile && panelsRight > 0) ? (cx - panelsRight - clearance) / 0.47 : Infinity;
       const scale = Math.max(100, Math.min(rawScale, maxScaleForClearance));
       // Radius derived from actual on-screen cell spacing, not a flat viewport constant — same
-      // approach as the landing intro globe, whose dot radius is cellPx * sizeFrac (~0.30-0.34
-      // of its own grid spacing). Targets that same ratio here so the two animations read as
-      // one cohesive system, capped against reveal 2's tighter cluster pitch so its dots don't
-      // start touching (that formation packs more densely than the rectangle grid does).
-      const [gridCols] = bestFactorPair(dotCount, 0.82 / 0.62);
-      const gridSpacingPx = scale * 0.80 / (gridCols - 1);
-      const clusterBigN = Math.round(dotCount * 0.90);
-      const clusterPitchPx = scale * 0.235 / Math.sqrt(clusterBigN / Math.PI);
-      const baseR = Math.max(1.0, Math.min(gridSpacingPx * 0.32, clusterPitchPx * 0.45));
+      // approach as the landing intro globe, whose dot radius is cellPx * sizeFrac. Every dot
+      // now shares this one spacing (no separate cluster pitch to reconcile against, since
+      // Clusters lives on the same grid as everything else).
+      const gridSpacingPx = scale * 0.80 / (GRID_COLS - 1);
+      const baseR = Math.max(1.0, gridSpacingPx * 0.32);
       ctx.clearRect(0, 0, W, H);
 
-      for (let k = 0; k < dotCount; k++) {
-        const a = from[k], b = to[k], d = dots[k];
-        d.ux = lerp(a.ux, b.ux, morph);
-        d.uy = lerp(a.uy, b.uy, morph);
+      const fromCoverage = coverageSets[band];
+      const toCoverage = isLast ? fromCoverage : coverageSets[band + 1];
+      const nowSec = performance.now() / 1000;
 
-        const litNow = lerp(a.lit ? 1 : 0, b.lit ? 1 : 0, morph);
-        let alpha = lerp(DIM_ALPHA, LIT_ALPHA, litNow);
+      for (let k = 0; k < dotCount; k++) {
+        const d = dots[k];
+        const covFrom = fromCoverage[k], covTo = toCoverage[k];
+        let alpha, coverageForSize, restingCoverage = null;
+
+        if (Math.abs(covFrom - covTo) < COVERAGE_EPSILON || morph <= d.flickerStart) {
+          // Either nothing meaningfully changes this band, or this dot's personal stagger hasn't
+          // kicked in yet — either way it's resting at its old coverage (which, during the whole
+          // hold phase, is every dot's state, since morph is pinned at 0 until HOLD_FRACTION).
+          restingCoverage = covFrom;
+          alpha = covFrom * MAX_ALPHA;
+          coverageForSize = covFrom;
+        } else {
+          const localT = clamp01((morph - d.flickerStart) / d.flickerDur);
+          if (localT >= 1) {
+            restingCoverage = covTo;
+            alpha = covTo * MAX_ALPHA;
+            coverageForSize = covTo;
+          } else {
+            // Same sine-vs-shrinking-threshold shape as the intro globe's entrance flicker, but
+            // parameterized by localT (derived from scroll-driven morph, not wall time) — so
+            // scrubbing backward through a transition replays this exact curve in reverse
+            // instead of racing forward, keeping the whole thing scrub-safe. Mid-flicker dots
+            // are excluded from the ambient field below (restingCoverage stays null) — they're
+            // already doing their own "barely there" flicker, and layering ambient on top would
+            // just be noise during the one moment we want attention on the shape itself.
+            const threshold = 0.6 - localT * 1.4;
+            const flickerHigh = Math.sin(localT * 22 + d.seed * 7) > threshold;
+            alpha = flickerHigh ? covTo * MAX_ALPHA : FLICKER_LOW_ALPHA;
+            coverageForSize = flickerHigh ? covTo : covFrom;
+          }
+        }
+
+        if (restingCoverage !== null && restingCoverage < AMBIENT_THRESHOLD) {
+          // Ambient flicker field: this cell is genuinely at rest with nothing to show, so it's
+          // fair game for the "technical/alive" background texture — a sharp, narrow pulse (sin
+          // driven to the 6th power) rather than a slow smooth breathing glow, staggered per-dot
+          // by ambSeed so the whole field doesn't pulse in unison. Purely cosmetic, so it runs on
+          // wall-clock time rather than scroll — nothing here is meant to be read.
+          const pulse = Math.max(0, Math.sin(nowSec * d.ambSpeed + d.ambSeed * 6.2832));
+          alpha = Math.pow(pulse, 6) * AMBIENT_ALPHA;
+          coverageForSize = 0;
+        }
+
         if (dissolving > 0) {
           alpha *= Math.max(0, 1 - Math.max(0, (dissolving - d.fadeOrder * 0.75) / 0.25));
         }
         if (alpha <= 0.004) continue;
 
-        const r = baseR * lerp(a.sizeMul, b.sizeMul, morph);
+        const r = baseR * (SIZE_MIN + (1 - SIZE_MIN) * coverageForSize);
         ctx.beginPath();
         ctx.fillStyle = 'rgba(201,37,5,' + alpha.toFixed(3) + ')';
         ctx.arc(cx + d.ux * scale, cy + d.uy * scale, r, 0, Math.PI * 2);
@@ -2374,6 +2552,7 @@
 
   document.getElementById('archive-filter-panel-close').addEventListener('click', () => {
     document.getElementById('archive-filter-panel').classList.remove('open');
+    refreshMenuForceExpanded();
   });
 
   /* ---- graph data: nodes sized by reactions, edges from embedding cosine similarity ---- */
@@ -2385,19 +2564,32 @@
   }
 
   function buildArchiveLinks(nodes) {
-    const links = [];
     const withEmbedding = nodes.filter(n => Array.isArray(n.embedding) && n.embedding.length > 0);
     withEmbedding.forEach(n => { n._normEmbedding = normalizeEmbedding(n.embedding); });
-    for (let i = 0; i < withEmbedding.length; i++) {
-      for (let j = i + 1; j < withEmbedding.length; j++) {
-        const a = withEmbedding[i], b = withEmbedding[j];
-        if (a._normEmbedding.length !== b._normEmbedding.length) continue;
-        let sim = 0;
-        for (let k = 0; k < a._normEmbedding.length; k++) sim += a._normEmbedding[k] * b._normEmbedding[k];
-        if (sim >= ARCHIVE_SIMILARITY_THRESHOLD) links.push({ source: a.id, target: b.id, sim });
-      }
+
+    function simBetween(a, b) {
+      let sim = 0;
+      for (let k = 0; k < a._normEmbedding.length; k++) sim += a._normEmbedding[k] * b._normEmbedding[k];
+      return sim;
     }
-    return links;
+    const pairKey = (a, b) => (a < b ? `${a}|${b}` : `${b}|${a}`);
+
+    // A link is kept if EITHER endpoint picks the other as one of its own top-K matches (not only
+    // when both mutually agree) — a mutual-only rule would undercut the point of every memo always
+    // having some connection regardless of the embedding model's own quirky absolute scale.
+    const links = new Map();
+    withEmbedding.forEach(n => {
+      withEmbedding
+        .filter(o => o !== n && o._normEmbedding.length === n._normEmbedding.length)
+        .map(o => ({ node: o, sim: simBetween(n, o) }))
+        .sort((a, b) => b.sim - a.sim)
+        .slice(0, ARCHIVE_TOP_K)
+        .forEach(({ node: o, sim }) => {
+          const key = pairKey(n.id, o.id);
+          if (!links.has(key)) links.set(key, { source: n.id, target: o.id, sim });
+        });
+    });
+    return Array.from(links.values());
   }
 
   // Only the top few nodes by interaction count get an always-on badge — labeling every node
@@ -2422,6 +2614,7 @@
         id: m.docId,
         username: m.username || 'Anonymous',
         language, mixType,
+        transcript: m.transcript || '',
         classification: m.classification || null,
         embedding: m.embedding || null,
         likes, dislikes, agrees, disagrees, interactions,
@@ -2563,7 +2756,12 @@
   }
 
   /* ---- node-detail card: username, language, classification, reactions ---- */
-  function renderArchiveNodeCard(n, clientX, clientY) {
+  const ARCHIVE_TRANSCRIPT_PREVIEW_LEN = 140;
+  let archiveCardNode = null;
+  let archiveCardExpanded = false;
+
+  function renderArchiveNodeCardContent() {
+    const n = archiveCardNode;
     const card = document.getElementById('archive-node-card');
     const rows = n.classification
       ? CLASSIFICATION_SPECTRUMS.map(s => {
@@ -2573,16 +2771,43 @@
             : '';
         }).join('')
       : `<div class="country-info-note">No classification data.</div>`;
+
+    const transcript = (n.transcript || '').trim();
+    let transcriptHTML = '';
+    if (transcript) {
+      const isLong = transcript.length > ARCHIVE_TRANSCRIPT_PREVIEW_LEN;
+      const shown = (isLong && !archiveCardExpanded)
+        ? transcript.slice(0, ARCHIVE_TRANSCRIPT_PREVIEW_LEN).trim() + '…'
+        : transcript;
+      transcriptHTML = `
+        <div class="archive-node-transcript">"${shown}"${isLong
+          ? `<button class="archive-transcript-toggle" onclick="toggleArchiveTranscript()">${archiveCardExpanded ? 'Show less' : 'Show more'}</button>`
+          : ''}</div>`;
+    }
+
     card.innerHTML = `
       <button class="country-info-close" onclick="closeArchiveNodeCard()">✕</button>
       <div class="country-info-name">${n.username}</div>
+      ${transcriptHTML}
       <div class="country-info-row"><span>Language</span><span>${n.language}</span></div>
       ${rows}
       <div class="country-info-row"><span>Reactions</span><span>${n.interactions}</span></div>
     `;
-    card.style.display = 'block';
+  }
+
+  function renderArchiveNodeCard(n, clientX, clientY) {
+    archiveCardNode = n;
+    archiveCardExpanded = false;
+    renderArchiveNodeCardContent();
+    document.getElementById('archive-node-card').style.display = 'block';
     positionArchiveNodeCard(clientX, clientY);
   }
+
+  function toggleArchiveTranscript() {
+    archiveCardExpanded = !archiveCardExpanded;
+    renderArchiveNodeCardContent();
+  }
+  window.toggleArchiveTranscript = toggleArchiveTranscript;
   function positionArchiveNodeCard(clientX, clientY) {
     const card = document.getElementById('archive-node-card');
     const wrap = document.getElementById('archive-canvas-wrap');
@@ -2783,6 +3008,19 @@
   map.on('moveend', () => setMapInteracting(false));
   map.on('zoomend', () => setMapInteracting(false));
 
+  // A real, occasional browser/GPU event (not something the app triggers) — Chrome in particular
+  // will evict the oldest active WebGL context once too many are open, and this map's is the
+  // oldest of the three this page ever creates (About globe + Archive 3D both come later). Without
+  // preventDefault() here the context can never be restored at all, and Mapbox has no built-in
+  // recovery for this app's own style.load setup (addLayer/addSource assume they only ever run
+  // once) — so rather than attempt a risky in-place recovery, this just asks for a plain reload.
+  const contextLostNotice = document.getElementById('map-context-lost-notice');
+  map.getCanvas().addEventListener('webglcontextlost', (e) => {
+    e.preventDefault();
+    contextLostNotice.classList.add('visible');
+  }, false);
+  document.getElementById('map-context-lost-reload').addEventListener('click', () => location.reload());
+
   map.on('style.load', () => {
     map.setFog({
       color: 'rgb(18,18,18)',
@@ -2909,7 +3147,7 @@
     map.on('mouseenter', 'memo-dots', () => { map.getCanvas().style.cursor = 'pointer'; });
     map.on('mouseleave', 'memo-dots', () => { map.getCanvas().style.cursor = ''; });
     map.on('click', 'memo-dots', (e) => {
-      if (e.features && e.features[0]) openMemoPopup(e.features[0], e.lngLat);
+      if (e.features && e.features[0]) openMemoPopup(e.features[0], e.features[0].geometry.coordinates);
     });
   });
 
@@ -2982,6 +3220,7 @@
             language: data.language,
             languageMix: data.languageMix,
             classification: data.classification,
+            acousticFeatures: data.acousticFeatures,
             audioURL: data.audioURL || '',
             username: data.username || 'Anonymous',
             docId: doc.id,
@@ -3044,6 +3283,56 @@
   }
   window.backfillMissingClassification = backfillMissingClassification;
 
+  // One-time console-triggered migration for an even older generation of memos: these predate the
+  // transcript field being saved to Firestore at all (language/languageMix were already stored,
+  // just not the raw text), so backfillMissingClassification() has nothing to work from for them —
+  // it correctly skips them rather than guessing. This re-transcribes each one directly from its
+  // still-available audioURL (same Whisper call detectLanguageFromSegments already makes, just fed
+  // the whole clip as one segment instead of splitting it), then runs the same
+  // classification/embedding pass. Only touches memos with an audioURL but no transcript.
+  // Run once from the browser console: backfillMissingTranscripts()
+  async function backfillMissingTranscripts() {
+    const db = window._db;
+    const col = window._fbCollection;
+    const get = window._fbGetDocs;
+    const doc = window._fbDoc;
+    const update = window._fbUpdateDoc;
+    if (!db) { console.log('Firebase not ready'); return; }
+
+    const snapshot = await get(col(db, 'memos'));
+    const targets = [];
+    snapshot.forEach(d => {
+      const data = d.data();
+      if (!(data.transcript && data.transcript.trim()) && data.audioURL) {
+        targets.push({ id: d.id, audioURL: data.audioURL });
+      }
+    });
+
+    console.log(`Re-transcribing ${targets.length} of ${snapshot.size} memo(s) missing a stored transcript...`);
+    for (let i = 0; i < targets.length; i++) {
+      const t = targets[i];
+      try {
+        const blob = await (await fetch(t.audioURL)).blob();
+        const { text } = await detectLanguageFromSegments([blob]);
+        if (!text.trim()) {
+          console.log(`[${i + 1}/${targets.length}] no speech detected for ${t.id}, skipping`);
+          continue;
+        }
+        const [classification, embedding] = await Promise.all([
+          classifySpectrums(text),
+          getEmbedding(text)
+        ]);
+        await update(doc(db, 'memos', t.id), { transcript: text, classification, embedding });
+        console.log(`[${i + 1}/${targets.length}] backfilled ${t.id}: "${text.slice(0, 60)}"`);
+      } catch (e) {
+        console.log(`[${i + 1}/${targets.length}] failed for ${t.id}:`, e.message);
+      }
+      await new Promise(r => setTimeout(r, 500));
+    }
+    console.log('Re-transcription backfill complete — reload the page to see the updated Archive/filters.');
+  }
+  window.backfillMissingTranscripts = backfillMissingTranscripts;
+
   const FRESH_MEMO_MS = 60 * 60 * 1000;
   let memoFeatureCollection = { type: 'FeatureCollection', features: [] };
   let memoLocalCounter = 0;
@@ -3069,7 +3358,7 @@
   let memoSessions = {};
   let sessionCounter = 0;
 
-  function addMemoFeature({ location, language, languageMix, classification, audioURL, username, docId, accentConfidencePct, accentTop, accentCoverage, likes, dislikes, agrees, disagrees, timestamp }) {
+  function addMemoFeature({ location, language, languageMix, classification, acousticFeatures, audioURL, username, docId, accentConfidencePct, accentTop, accentCoverage, likes, dislikes, agrees, disagrees, timestamp }) {
     const interactions = (likes || 0) + (dislikes || 0) + (agrees || 0) + (disagrees || 0);
     const baseRadius = Math.min(9, 4.5 + interactions * 0.4);
     const isFresh = !!(timestamp && (Date.now() - new Date(timestamp).getTime() < FRESH_MEMO_MS));
@@ -3085,6 +3374,7 @@
         language: language || '',
         languageMix: JSON.stringify(languageMix || null),
         classification: JSON.stringify(classification || null),
+        acousticFeatures: JSON.stringify(acousticFeatures || null),
         audioURL: audioURL || '',
         username: username || '',
         accentConfidencePct: typeof accentConfidencePct === 'number' ? accentConfidencePct : -1,
@@ -3133,6 +3423,7 @@
     const p = feature.properties;
     const languageMix = p.languageMix ? JSON.parse(p.languageMix) : null;
     const classification = p.classification ? JSON.parse(p.classification) : null;
+    const acousticFeatures = p.acousticFeatures ? JSON.parse(p.acousticFeatures) : null;
     // Reconstructed from the GL feature's flat properties (Mapbox properties can't store nested
     // objects directly) back into the same shape runPipeline's live accentAnalysis has, so the
     // popup's tertiary accent line renders identically whether it's a fresh recording or a
@@ -3152,7 +3443,7 @@
         likes: p.likes, dislikes: p.dislikes, agrees: p.agrees, disagrees: p.disagrees
       }))
       .addTo(map);
-    mountMemoCanvas(popup, p.docId || p.audioURL, languageMix ? languageMix.primary : p.language);
+    mountMemoCanvas(popup, p.docId || p.audioURL, languageMix ? languageMix.primary : p.language, acousticFeatures ? acousticFeatures.energyEnvelope : null);
     currentMemoPopup = popup;
 
     activeId = p.docId;
@@ -3321,8 +3612,23 @@
 
     try {
       recordLabel.textContent = '🌐 detecting language...';
-      const { language, text, languageMix, segmentLanguages, whisperConfidence } = await detectLanguageFromSegments(segmentBlobs);
+      let { language, text, languageMix, segmentLanguages, whisperConfidence } = await detectLanguageFromSegments(segmentBlobs);
       console.log('Language:', language, '| Mix:', languageMix);
+
+      // Whisper hallucinates plausible text on silent/near-silent audio instead of reporting "no
+      // speech" (a well-documented model behavior) — its own no_speech_prob is the signal that
+      // actually flags this, but nothing previously checked it. Left ungated, a silent recording
+      // still sails through accent/classification/embedding below, and none of those models has
+      // an "abstain" option — each just confidently picks its single most-likely label regardless
+      // of whether the input meant anything, which is how empty audio came back as e.g. "English,
+      // Hindi accent."
+      const noSpeechDetected = !text.trim() || (whisperConfidence && whisperConfidence.noSpeechProb > 0.6);
+      if (noSpeechDetected) {
+        language = 'unknown';
+        text = '';
+        languageMix = { primary: 'unknown', primaryPct: 100, mix: [] };
+      }
+
       popup.setHTML(popupHTML({ audioURL, language, languageMix, loading: '🎙️ measuring accent + content...' }));
       mountMemoCanvas(popup, audioURL, language);
 
@@ -3330,11 +3636,14 @@
       // Four independent real signals — run concurrently instead of back to back. Each of these
       // already defends itself against failure/timeout (returns null rather than throwing), so a
       // slow/unreachable HF Space or Inference API never blocks the other three or publishing.
+      // The three model-based calls are skipped entirely when no real speech was detected —
+      // acousticFeatures still runs regardless, since it's local/free and still wanted for the
+      // dot-grid pattern (a silent clip just ends up with a near-zero energy envelope, honestly).
       const [accentAnalysis, acousticFeatures, classification, embedding] = await Promise.all([
-        analyzeAccent(blob, language),
+        noSpeechDetected ? Promise.resolve(null) : analyzeAccent(blob, language),
         analyzeAcousticFeatures(blob),
-        classifySpectrums(text),
-        getEmbedding(text)
+        noSpeechDetected ? Promise.resolve(null) : classifySpectrums(text),
+        noSpeechDetected ? Promise.resolve(null) : getEmbedding(text)
       ]);
       console.log('Accent:', accentAnalysis, '| Classification:', classification, '| Acoustic:', acousticFeatures);
 
@@ -3400,7 +3709,7 @@
       const timestamp = new Date().toISOString();
       addMemoFeature({
         location: session.location, language: session.language, languageMix: session.languageMix,
-        classification: session.classification, audioURL: session.audioURL, username, docId,
+        classification: session.classification, acousticFeatures: session.acousticFeatures, audioURL: session.audioURL, username, docId,
         accentConfidencePct: session.accentConfidencePct,
         accentTop: session.accentAnalysis ? session.accentAnalysis.top : '',
         accentCoverage: session.accentAnalysis ? session.accentAnalysis.coverage : undefined,
@@ -3440,7 +3749,7 @@
     };
   }
 
-  function setupCanvasPattern(canvas, seedStr, language) {
+  function setupCanvasPattern(canvas, seedStr, language, energyEnvelope) {
     const dpr = window.devicePixelRatio || 1;
     const rect = canvas.getBoundingClientRect();
     if (rect.width === 0 || rect.height === 0) return;
@@ -3449,28 +3758,44 @@
     const ctx = canvas.getContext('2d');
     ctx.scale(dpr, dpr);
 
-    const cols = 24, rows = 12;
+    const cols = 15, rows = 8;
     const rand = mulberry32(hashStringToInt(seedStr || 'memo'));
     // Small inset so the grid never touches the card's rounded corners.
     const margin = Math.min(rect.width, rect.height) * 0.06;
     const cellW = (rect.width - margin * 2) / cols;
     const cellH = (rect.height - margin * 2) / rows;
-    const dotRadius = Math.min(cellW, cellH) * 0.32;
+    const dotRadius = Math.min(cellW, cellH) * 0.42;
 
     // Per-memo fingerprint: each dot's own independent base brightness (a shade of the app's
     // orange, never a different hue) — the arrangement of bright/dim dots this produces is
     // already a unique "constellation" per memo. Each dot also gets its own phase/speed offset
     // so the shared band signals below don't make every dot move in flat unison.
+    // When a real energyEnvelope is available (one 0-1 value per column, from that memo's own
+    // decoded loudness-over-time — see analyzeAcousticFeatures), it's blended 50/50 with the
+    // per-dot random value so the constellation actually reflects that memo's real audio instead
+    // of being purely arbitrary — still bounded in the exact same ranges either way, since both
+    // terms being blended are already 0-1. Older memos with no stored envelope fall back to
+    // exactly today's 100% random pattern.
+    // Same 4 independent rand() calls per dot either way (alpha, lightness, phase, speedMult) —
+    // when there's no envelope each stays fully independent, identical to before; when there is
+    // one, alpha's and lightness's own rand() calls are each blended toward that column's real
+    // energy value rather than replaced by it, so texture stays organic instead of flat-per-column.
+    const hasEnvelope = Array.isArray(energyEnvelope) && energyEnvelope.length === cols;
     const cells = [];
     for (let j = 0; j < rows; j++) {
       for (let i = 0; i < cols; i++) {
+        // Skip the 4 corner cells so the grid's own silhouette follows the card's rounded
+        // corners instead of being sliced there by .memo-audio-wrap's overflow clip.
+        if ((i === 0 || i === cols - 1) && (j === 0 || j === rows - 1)) continue;
+        const alphaMix = hasEnvelope ? (rand() * 0.5 + energyEnvelope[i] * 0.5) : rand();
+        const lightnessMix = hasEnvelope ? (rand() * 0.5 + energyEnvelope[i] * 0.5) : rand();
         cells.push({
           x: margin + (i + 0.5) * cellW,
           y: margin + (j + 0.5) * cellH,
-          baseAlpha: 0.18 + rand() * 0.55,
-          baseLightness: 34 + rand() * 22,
+          baseAlpha: 0.18 + alphaMix * 0.55,
+          baseLightness: 20 + lightnessMix * 45,
           phase: rand() * Math.PI * 2,
-          speedMult: 0.7 + rand() * 0.9
+          speedMult: 0.85 + rand() * 0.3
         });
       }
     }
@@ -3498,7 +3823,7 @@
         if (bands) {
           // Bass -> whether it appears at all: near-silent bass keeps dots at their dim idle
           // shade, presence rises with the low end.
-          const presence = Math.min(1, smoothedBass * 1.8);
+          const presence = Math.min(1, smoothedBass * 1.5);
           // Mid -> the shimmer's own oscillation speed: active mids shimmer faster, quiet mids
           // barely move, all slowed down by the decelerator.
           const oscSpeed = (0.4 + smoothedMid * 4.5) * AUDIO_REACT_SLOWDOWN;
@@ -3531,7 +3856,11 @@
     let audioCtx, analyser, source, rafId;
     let realGraphFailed = false;
     let taintCheckFrames = 0;
-    const TAINT_CHECK_MAX_FRAMES = 20;
+    // 90 frames (~1.5s at 60fps) — measured real startup latency (WebM/Opus decode warm-up)
+    // across several real memos ranged ~130-750ms before the analyser saw any signal at all;
+    // the previous 20-frame (~330ms) window was cutting that off before real data ever arrived,
+    // permanently mistaking normal warm-up for a CORS-tainted graph.
+    const TAINT_CHECK_MAX_FRAMES = 90;
 
     function stopVisual() {
       if (rafId) cancelAnimationFrame(rafId);
@@ -3671,15 +4000,15 @@
     const effectiveBottom = Math.min(viewBottom, navTop);
     const spaceAbove = markerScreenY - viewTop - clearance;
     const spaceBelow = effectiveBottom - markerScreenY - clearance;
-    // Floor is close to a typical fully-loaded card's own natural height (~420-460px) rather than
-    // an arbitrary small number — otherwise routine content on an ordinary screen gets force-capped
-    // into scrolling it never needed, which is exactly the "random bar" bug this used to have.
-    // But the floor can't just override reality: on a viewport too short to ever offer 460px
-    // anywhere (phone landscape, ~340px tall), it would let the popup render past the screen edge
-    // entirely instead of clamping. hardCeiling is what the viewport can physically provide, and
-    // always wins over the floor.
+    // Use whichever side actually has more room — that's the side Mapbox's own anchor picker will
+    // choose. An earlier version floored this at ~460px to avoid over-eager clamping on ordinary
+    // screens, but that floor could claim more room than either side truly had (e.g. a marker near
+    // the vertical middle of a normal phone screen, where neither side alone reaches 460px) and the
+    // popup would render past the screen edge uncapped. hardCeiling is a defensive backstop for
+    // pathologically short viewports; bestSide is the real physical constraint.
     const hardCeiling = Math.max(effectiveBottom - viewTop - clearance, 200);
-    const available = Math.min(Math.max(spaceAbove, spaceBelow, 460), hardCeiling);
+    const bestSide = Math.max(spaceAbove, spaceBelow);
+    const available = Math.max(Math.min(bestSide, hardCeiling), 200);
 
     // Only cap height if the content genuinely doesn't fit. Measure its real, unclamped height
     // first (the browser already has the full content in the DOM at this point) — everything here
@@ -3699,7 +4028,7 @@
     popup.setLngLat(popup.getLngLat());
   }
 
-  function mountMemoCanvas(popup, seedStr, language) {
+  function mountMemoCanvas(popup, seedStr, language, energyEnvelope) {
     const tryMount = () => {
       const el = popup.getElement && popup.getElement();
       if (!el) return false;
@@ -3707,7 +4036,7 @@
       const canvas = el.querySelector('.memo-canvas');
       if (!canvas || canvas.dataset.inited) return true;
       canvas.dataset.inited = '1';
-      setupCanvasPattern(canvas, seedStr, language);
+      setupCanvasPattern(canvas, seedStr, language, energyEnvelope);
       const audioEl = el.querySelector('.memo-audio-el');
       // crossOrigin has to be set BEFORE src, or the browser may already have started a
       // non-CORS fetch by the time JS gets to it — that ordering is exactly why the template
@@ -3968,10 +4297,26 @@ async function analyzeAcousticFeatures(blob) {
       const variability = Math.min(100, Math.round(varFrameRMS * 4000));
       const tension = Math.min(100, Math.round(zcr * 300));
 
+      // Real per-memo loudness-over-time signal, bucketed down from frameRMS (already computed
+      // above) rather than a fresh analysis pass. 15 buckets on purpose — matches setupCanvasPattern's
+      // `cols`, so bucket i maps 1:1 onto that column's dots. Normalized against this clip's OWN
+      // min/max (not a global scale) so every memo, loud or quiet, still spans the full 0-1 range.
+      const ENVELOPE_BUCKETS = 15;
+      const bucketSize = Math.max(1, Math.ceil(frameRMS.length / ENVELOPE_BUCKETS));
+      const rawEnvelope = [];
+      for (let i = 0; i < ENVELOPE_BUCKETS; i++) {
+        const bucket = frameRMS.slice(i * bucketSize, (i + 1) * bucketSize);
+        rawEnvelope.push(bucket.length ? bucket.reduce((a, b) => a + b, 0) / bucket.length : 0);
+      }
+      const minE = Math.min(...rawEnvelope), maxE = Math.max(...rawEnvelope);
+      const energyEnvelope = maxE > minE
+        ? rawEnvelope.map(v => (v - minE) / (maxE - minE))
+        : rawEnvelope.map(() => 0.5); // near-silent/flat clip — neutral, not misleadingly all-zero
+
       audioCtx.close();
       console.log('Local audio analysis:', { energy, variability, tension });
 
-      return { 'Energy': energy, 'Expressiveness': variability, 'Tension': tension };
+      return { 'Energy': energy, 'Expressiveness': variability, 'Tension': tension, energyEnvelope };
 
     } catch(e) {
       console.error('Local audio analysis error:', e);
