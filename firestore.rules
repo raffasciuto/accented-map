@@ -6,8 +6,6 @@ service cloud.firestore {
 
       allow create: if request.resource.data.username is string
         && request.resource.data.username.size() < 60
-        && request.resource.data.profile is string
-        && request.resource.data.profile.size() < 3000
         && request.resource.data.audioURL is string
         && request.resource.data.likes == 0
         && request.resource.data.dislikes == 0

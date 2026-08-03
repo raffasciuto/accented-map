@@ -1,0 +1,3585 @@
+{
+  "_readme": "Language representation dataset for the About-page globe. Language lists were extracted from each country's English Wikipedia 'Languages of <Country>' article (fetched 2026-08-02/03). Web-share percentages come from Common Crawl language statistics, crawl CC-MAIN-2026-30, cross-referenced with W3Techs (Aug 2026). A null percentage means the language does not appear in Common Crawl's language table at all - it is not tracked in web-crawl data. That absence is itself the finding, not missing work.",
+  "_schema": {
+    "langs": "[name, webPct|null, primary] - primary is 1 if this language is genuinely the first/home language of a real population in this country today (whether the country's ethnic majority, or a real native minority/settler-descended community), 0 if it is an administrative/elite lingua franca layered over a population whose real everyday language is something else (English in Nigeria, Urdu in Pakistan, French in Senegal). A language only counts toward a country's AI-representation score if primary=1. Locally-formed creoles (Nigerian Pidgin, Tok Pisin, Papiamento) count as primary. Colonial-origin languages CAN be primary when they became a population's genuine native tongue through settlement (English in USA/UK/Australia/Canada; Spanish in Argentina/Mexico/Peru/Colombia; Portuguese in Brazil) - the test is 'is this really someone's mother tongue here', not the language's origin. Migrant/diaspora languages (brought by recent immigrant communities, not the country's own people) are omitted entirely, not merely flagged 0.",
+    "total": "Total distinct languages the source article documents for that country. Values marked approximate in _notes were not stated outright by the article.",
+    "additional": "total minus the number of languages named here - rendered as 'and N further documented languages, none tracked in web-crawl data'."
+  },
+  "_sources": {
+    "webShare": "Common Crawl CC-MAIN-2026-30",
+    "crossReference": "W3Techs, Aug 2026",
+    "languageLists": "Wikipedia, Languages of <Country>"
+  },
+  "_notes": {
+    "USA": "No de jure federal official language. Executive Order 14224 (2025) declared English official at federal level by executive act. Spanish kept at primary:0 despite its scale (Puerto Rico, Southwest) - it is real and long-standing but not the majority home language nationally; unlike Nigeria/India's English, this is a judgment call about scale, not administrative-overlay status.",
+    "MEX": "Spanish is de facto national with no constitutional designation; the 68 Indigenous languages are statutorily national languages under the LGDLPI.",
+    "MLI": "Since the 2023 constitution the 13 national languages are the official ones; French was demoted to a working language, kept here at primary:0 as a real administrative holdover, not removed.",
+    "NER": "Hausa became the sole official language in 2025, replacing French, which is now only a working language (primary:0, kept not removed).",
+    "NGA": "Wikipedia's claimed French co-official status was never constitutionally implemented and has been dropped entirely - not official, not native, not migrant, just not real.",
+    "PAK": "Urdu is marked primary:0: it is a lingua franca native to north India, not indigenous to any Pakistani province - the same treatment given to Afrikaans-style administrative overlays elsewhere. Reasonable reviewers could contest this.",
+    "TUR": "Turkish is treated as primary, though Greek, Armenian and Syriac are older languages of Anatolia. A reviewer could reasonably contest this classification.",
+    "GBR": "Total of 300 reflects the article's census 'language categories', which include immigrant-community languages, not a purely linguistic count.",
+    "NLD": "Papiamento reclassified to primary:1 - it is the native creole of the Caribbean Netherlands (Bonaire), not a migrant language, despite the earlier dataset flagging it otherwise.",
+    "ZAF": "English and Afrikaans both marked primary:1 - each is the genuine native home language of a real (non-majority) South African population descended from settlers, not merely an elite administrative layer over the Black-majority population the way Nigeria's English is. This is a deliberate departure from the Nigeria/Kenya/India treatment of English.",
+    "SGP": "All four official languages (English, Mandarin, Malay, Tamil) marked primary:1 - each is a real, substantial home-language community in Singapore (58.1% / 26.6% / 7.0% / 2.2% of homes respectively, 2025), unlike Nigeria-style English with near-zero native speakers.",
+    "KAZ": "Russian marked primary:1 alongside Kazakh - Kazakhstan retains a large, genuinely native (not merely administrative) ethnic-Russian minority.",
+    "FIN": "Swedish marked primary:1 alongside Finnish - Finland-Swedes (~5%) are a genuine multi-generational native minority, not an administrative overlay.",
+    "CHE": "Romansh marked primary:1 despite being a minority even within its home canton - it is federally official and genuinely native, unlike Ireland's Irish or New Zealand's Maori (see IRL/NZL notes).",
+    "IRL": "Irish marked primary:0 - official-in-law as the first official language, but daily-spoken by a small minority outside the Gaeltacht; treated the same as New Zealand's Maori for consistency, despite Irish being indigenous to the territory (unlike Nigeria-style English).",
+    "NZL": "Maori marked primary:0 - official in law but only ~4% of the population speaks it, even among Maori only ~18%. English, though only de facto official, is the genuine ~95% majority native language.",
+    "AFG": "Dari and Pashto both marked primary:1 - Afghanistan has no single clean linguistic majority; Dari functions as the larger lingua franca+L1 combined, Pashto as the largest single ethnic group's language. Treated as a genuine dual-primary case, like Belgium or Bolivia.",
+    "BOL": "Guarani kept at primary:0 despite official status - only ~33,000 speakers, too small relative to Bolivia's other co-official majority-native languages (Quechua, Aymara) to count toward the score.",
+    "GEO": "Abkhaz and Russian both kept at primary:0 - Abkhaz's official status applies only to the disputed breakaway region, not Georgian-controlled territory; Russian is a Soviet-era administrative lingua franca without a comparably large genuine native Georgian-Russian population.",
+    "approximateTotals": [
+      "ESP",
+      "GBR",
+      "DEU",
+      "PRT",
+      "NLD",
+      "POL",
+      "SWE",
+      "GRC",
+      "TUR",
+      "ARG",
+      "CAN",
+      "COL",
+      "PER",
+      "NER",
+      "MLI",
+      "GHA",
+      "EGY",
+      "MAR",
+      "ZAF",
+      "CHN",
+      "JPN",
+      "KOR",
+      "PAK",
+      "BGD",
+      "VNM",
+      "PHL",
+      "SAU",
+      "DZA",
+      "TUN",
+      "SEN",
+      "CIV",
+      "CMR",
+      "UGA",
+      "TZA",
+      "COD",
+      "ZWE",
+      "MOZ",
+      "SDN",
+      "MDG",
+      "RWA",
+      "IRN",
+      "IRQ",
+      "ISR",
+      "AFG",
+      "NPL",
+      "LKA",
+      "MMR",
+      "MYS",
+      "SGP",
+      "KAZ",
+      "UZB",
+      "MNG",
+      "NOR",
+      "FIN",
+      "DNK",
+      "BEL",
+      "CHE",
+      "IRL",
+      "ROU",
+      "HUN",
+      "GEO",
+      "CHL",
+      "VEN",
+      "ECU",
+      "BOL",
+      "PRY",
+      "NZL"
+    ],
+    "totalsSourceDependent": "ETH: Ethnologue 90 vs Glottolog 109. IND: 780 (People's Linguistic Survey) vs 459 (Ethnologue) vs 1369 rationalised mother tongues (2011 Census). PHL: 130-195 depending on classification, Ethnologue 182 native. VNM/SAU: no dedicated article exists; totals derived from ethnic-group counts and named varieties respectively."
+  },
+  "countries": {
+    "ESP": {
+      "name": "Spain",
+      "total": 23,
+      "additional": 15,
+      "langs": [
+        [
+          "Spanish",
+          4.64,
+          1
+        ],
+        [
+          "Catalan/Valencian",
+          0.21,
+          1
+        ],
+        [
+          "Galician",
+          0.032,
+          1
+        ],
+        [
+          "Basque",
+          0.038,
+          1
+        ],
+        [
+          "Aranese Occitan",
+          null,
+          1
+        ],
+        [
+          "Asturian",
+          null,
+          1
+        ],
+        [
+          "Leonese",
+          null,
+          1
+        ],
+        [
+          "Aragonese",
+          null,
+          1
+        ]
+      ]
+    },
+    "GBR": {
+      "name": "United Kingdom",
+      "total": 300,
+      "additional": 292,
+      "langs": [
+        [
+          "English",
+          40.58,
+          1
+        ],
+        [
+          "Welsh",
+          0.0107,
+          1
+        ],
+        [
+          "Scottish Gaelic",
+          null,
+          1
+        ],
+        [
+          "Irish",
+          0.0063,
+          1
+        ],
+        [
+          "Scots",
+          null,
+          1
+        ],
+        [
+          "Ulster Scots",
+          null,
+          1
+        ],
+        [
+          "Cornish",
+          null,
+          1
+        ],
+        [
+          "British Sign Language",
+          null,
+          1
+        ]
+      ]
+    },
+    "DEU": {
+      "name": "Germany",
+      "total": 17,
+      "additional": 9,
+      "langs": [
+        [
+          "German",
+          5.99,
+          1
+        ],
+        [
+          "Danish",
+          0.53,
+          1
+        ],
+        [
+          "Low German",
+          null,
+          1
+        ],
+        [
+          "North Frisian",
+          null,
+          1
+        ],
+        [
+          "Saterland Frisian",
+          null,
+          1
+        ],
+        [
+          "Upper Sorbian",
+          null,
+          1
+        ],
+        [
+          "Lower Sorbian",
+          null,
+          1
+        ],
+        [
+          "Romani",
+          null,
+          1
+        ]
+      ]
+    },
+    "FRA": {
+      "name": "France",
+      "total": 75,
+      "additional": 67,
+      "langs": [
+        [
+          "French",
+          4.8,
+          1
+        ],
+        [
+          "Catalan",
+          0.21,
+          1
+        ],
+        [
+          "Basque",
+          0.038,
+          1
+        ],
+        [
+          "Occitan",
+          null,
+          1
+        ],
+        [
+          "Corsican",
+          0.0029,
+          1
+        ],
+        [
+          "Breton",
+          0.0021,
+          1
+        ],
+        [
+          "Alsatian",
+          null,
+          1
+        ],
+        [
+          "Franco-Provencal",
+          null,
+          1
+        ]
+      ]
+    },
+    "ITA": {
+      "name": "Italy",
+      "total": 26,
+      "additional": 18,
+      "langs": [
+        [
+          "Italian",
+          2.49,
+          1
+        ],
+        [
+          "Sicilian",
+          null,
+          1
+        ],
+        [
+          "Venetian",
+          null,
+          1
+        ],
+        [
+          "Neapolitan",
+          null,
+          1
+        ],
+        [
+          "Lombard",
+          null,
+          1
+        ],
+        [
+          "Piedmontese",
+          null,
+          1
+        ],
+        [
+          "Sardinian",
+          null,
+          1
+        ],
+        [
+          "Friulian",
+          null,
+          1
+        ]
+      ]
+    },
+    "PRT": {
+      "name": "Portugal",
+      "total": 8,
+      "additional": 0,
+      "langs": [
+        [
+          "Portuguese",
+          2.52,
+          1
+        ],
+        [
+          "Mirandese",
+          null,
+          1
+        ],
+        [
+          "Leonese",
+          null,
+          1
+        ],
+        [
+          "Calo",
+          null,
+          1
+        ],
+        [
+          "Minderico",
+          null,
+          1
+        ],
+        [
+          "Barranquenho",
+          null,
+          1
+        ],
+        [
+          "Portuguese Sign Language",
+          null,
+          1
+        ],
+        [
+          "Madeiran Sign Language",
+          null,
+          1
+        ]
+      ]
+    },
+    "NLD": {
+      "name": "Netherlands",
+      "total": 9,
+      "additional": 0,
+      "langs": [
+        [
+          "Dutch",
+          1.82,
+          1
+        ],
+        [
+          "English",
+          40.58,
+          0
+        ],
+        [
+          "West Frisian",
+          0.0023,
+          1
+        ],
+        [
+          "Yiddish",
+          0.0016,
+          1
+        ],
+        [
+          "Dutch Low Saxon",
+          null,
+          1
+        ],
+        [
+          "Limburgish",
+          null,
+          1
+        ],
+        [
+          "Romani",
+          null,
+          1
+        ],
+        [
+          "Dutch Sign Language",
+          null,
+          1
+        ],
+        [
+          "Papiamento",
+          null,
+          1
+        ]
+      ]
+    },
+    "POL": {
+      "name": "Poland",
+      "total": 16,
+      "additional": 8,
+      "langs": [
+        [
+          "Polish",
+          2.04,
+          1
+        ],
+        [
+          "German",
+          5.99,
+          1
+        ],
+        [
+          "Ukrainian",
+          0.8,
+          1
+        ],
+        [
+          "Belarusian",
+          0.016,
+          1
+        ],
+        [
+          "Lithuanian",
+          0.17,
+          1
+        ],
+        [
+          "Kashubian",
+          null,
+          1
+        ],
+        [
+          "Tatar",
+          0.0075,
+          1
+        ],
+        [
+          "Romani",
+          null,
+          1
+        ]
+      ]
+    },
+    "SWE": {
+      "name": "Sweden",
+      "total": 200,
+      "additional": 192,
+      "langs": [
+        [
+          "Swedish",
+          0.74,
+          1
+        ],
+        [
+          "Finnish",
+          0.38,
+          1
+        ],
+        [
+          "Yiddish",
+          0.0016,
+          1
+        ],
+        [
+          "Meankieli",
+          null,
+          1
+        ],
+        [
+          "Northern Sami",
+          null,
+          1
+        ],
+        [
+          "Romani",
+          null,
+          1
+        ],
+        [
+          "Dalecarlian",
+          null,
+          1
+        ],
+        [
+          "Gutnish",
+          null,
+          1
+        ]
+      ]
+    },
+    "RUS": {
+      "name": "Russia",
+      "total": 100,
+      "additional": 92,
+      "langs": [
+        [
+          "Russian",
+          6.82,
+          1
+        ],
+        [
+          "Tatar",
+          0.0075,
+          1
+        ],
+        [
+          "Chechen",
+          null,
+          1
+        ],
+        [
+          "Bashkir",
+          null,
+          1
+        ],
+        [
+          "Chuvash",
+          null,
+          1
+        ],
+        [
+          "Avar",
+          null,
+          1
+        ],
+        [
+          "Yakut (Sakha)",
+          null,
+          1
+        ],
+        [
+          "Kabardian",
+          null,
+          1
+        ]
+      ]
+    },
+    "UKR": {
+      "name": "Ukraine",
+      "total": 40,
+      "additional": 32,
+      "langs": [
+        [
+          "Ukrainian",
+          0.8,
+          1
+        ],
+        [
+          "Russian",
+          6.82,
+          1
+        ],
+        [
+          "Romanian",
+          0.57,
+          1
+        ],
+        [
+          "Hungarian",
+          0.53,
+          1
+        ],
+        [
+          "Crimean Tatar",
+          null,
+          1
+        ],
+        [
+          "Bulgarian",
+          0.28,
+          1
+        ],
+        [
+          "Polish",
+          2.04,
+          1
+        ],
+        [
+          "Greek",
+          0.56,
+          1
+        ]
+      ]
+    },
+    "GRC": {
+      "name": "Greece",
+      "total": 20,
+      "additional": 12,
+      "langs": [
+        [
+          "Greek",
+          0.56,
+          1
+        ],
+        [
+          "Turkish",
+          1.35,
+          1
+        ],
+        [
+          "Macedonian",
+          0.038,
+          1
+        ],
+        [
+          "Arvanitika",
+          null,
+          1
+        ],
+        [
+          "Pontic Greek",
+          null,
+          1
+        ],
+        [
+          "Aromanian",
+          null,
+          1
+        ],
+        [
+          "Ladino (Judaeo-Spanish)",
+          null,
+          1
+        ],
+        [
+          "Romani",
+          null,
+          1
+        ]
+      ]
+    },
+    "TUR": {
+      "name": "Turkey",
+      "total": 40,
+      "additional": 32,
+      "langs": [
+        [
+          "Turkish",
+          1.35,
+          1
+        ],
+        [
+          "Kurdish (Kurmanji)",
+          0.0064,
+          1
+        ],
+        [
+          "Zazaki",
+          null,
+          1
+        ],
+        [
+          "Arabic",
+          0.65,
+          1
+        ],
+        [
+          "Armenian",
+          0.034,
+          1
+        ],
+        [
+          "Laz",
+          null,
+          1
+        ],
+        [
+          "Pomak",
+          null,
+          1
+        ],
+        [
+          "Adyghe",
+          null,
+          1
+        ]
+      ]
+    },
+    "USA": {
+      "name": "United States",
+      "total": 430,
+      "additional": 422,
+      "langs": [
+        [
+          "English",
+          40.58,
+          1
+        ],
+        [
+          "Spanish",
+          4.64,
+          0
+        ],
+        [
+          "Navajo",
+          null,
+          1
+        ],
+        [
+          "Hawaiian",
+          null,
+          1
+        ],
+        [
+          "Samoan",
+          0.0008,
+          1
+        ],
+        [
+          "Chamorro",
+          null,
+          1
+        ],
+        [
+          "Cherokee",
+          null,
+          1
+        ],
+        [
+          "American Sign Language",
+          null,
+          1
+        ]
+      ]
+    },
+    "CAN": {
+      "name": "Canada",
+      "total": 100,
+      "additional": 92,
+      "langs": [
+        [
+          "English",
+          40.58,
+          1
+        ],
+        [
+          "French",
+          4.8,
+          1
+        ],
+        [
+          "Cree",
+          null,
+          1
+        ],
+        [
+          "Inuktitut",
+          null,
+          1
+        ],
+        [
+          "Ojibwe",
+          null,
+          1
+        ],
+        [
+          "Oji-Cree",
+          null,
+          1
+        ],
+        [
+          "Dene Suline",
+          null,
+          1
+        ],
+        [
+          "Mi'kmaq",
+          null,
+          1
+        ]
+      ]
+    },
+    "MEX": {
+      "name": "Mexico",
+      "total": 68,
+      "additional": 60,
+      "langs": [
+        [
+          "Spanish",
+          4.64,
+          1
+        ],
+        [
+          "Nahuatl",
+          null,
+          1
+        ],
+        [
+          "Yucatec Maya",
+          null,
+          1
+        ],
+        [
+          "Tzeltal",
+          null,
+          1
+        ],
+        [
+          "Tzotzil",
+          null,
+          1
+        ],
+        [
+          "Mixtec",
+          null,
+          1
+        ],
+        [
+          "Zapotec",
+          null,
+          1
+        ],
+        [
+          "Otomi",
+          null,
+          1
+        ]
+      ]
+    },
+    "BRA": {
+      "name": "Brazil",
+      "total": 238,
+      "additional": 230,
+      "langs": [
+        [
+          "Portuguese",
+          2.52,
+          1
+        ],
+        [
+          "Ticuna",
+          null,
+          1
+        ],
+        [
+          "Kaingang",
+          null,
+          1
+        ],
+        [
+          "Kaiwa Guarani",
+          null,
+          1
+        ],
+        [
+          "Nheengatu",
+          null,
+          1
+        ],
+        [
+          "Guajajara",
+          null,
+          1
+        ],
+        [
+          "Terena",
+          null,
+          1
+        ],
+        [
+          "Brazilian Sign Language (Libras)",
+          null,
+          1
+        ]
+      ]
+    },
+    "ARG": {
+      "name": "Argentina",
+      "total": 25,
+      "additional": 17,
+      "langs": [
+        [
+          "Spanish",
+          4.64,
+          1
+        ],
+        [
+          "Quechua",
+          0.0009,
+          1
+        ],
+        [
+          "Guarani",
+          0.0008,
+          1
+        ],
+        [
+          "Aymara",
+          0.0001,
+          1
+        ],
+        [
+          "Mapudungun",
+          null,
+          1
+        ],
+        [
+          "Wichi",
+          null,
+          1
+        ],
+        [
+          "Chana",
+          null,
+          1
+        ],
+        [
+          "Argentine Sign Language",
+          null,
+          1
+        ]
+      ]
+    },
+    "COL": {
+      "name": "Colombia",
+      "total": 71,
+      "additional": 63,
+      "langs": [
+        [
+          "Spanish",
+          4.64,
+          1
+        ],
+        [
+          "Wayuunaiki",
+          null,
+          1
+        ],
+        [
+          "Nasa Yuwe",
+          null,
+          1
+        ],
+        [
+          "Embera",
+          null,
+          1
+        ],
+        [
+          "Palenquero",
+          null,
+          1
+        ],
+        [
+          "Ticuna",
+          null,
+          1
+        ],
+        [
+          "Wounaan",
+          null,
+          1
+        ],
+        [
+          "Guambiano",
+          null,
+          1
+        ]
+      ]
+    },
+    "PER": {
+      "name": "Peru",
+      "total": 44,
+      "additional": 36,
+      "langs": [
+        [
+          "Spanish",
+          4.64,
+          1
+        ],
+        [
+          "Quechua",
+          0.0009,
+          1
+        ],
+        [
+          "Aymara",
+          0.0001,
+          1
+        ],
+        [
+          "Ashaninka",
+          null,
+          1
+        ],
+        [
+          "Awajun",
+          null,
+          1
+        ],
+        [
+          "Machiguenga",
+          null,
+          1
+        ],
+        [
+          "Achuar",
+          null,
+          1
+        ],
+        [
+          "Candoshi",
+          null,
+          1
+        ]
+      ]
+    },
+    "NGA": {
+      "name": "Nigeria",
+      "total": 520,
+      "additional": 512,
+      "langs": [
+        [
+          "English",
+          40.58,
+          0
+        ],
+        [
+          "Hausa",
+          0.0026,
+          1
+        ],
+        [
+          "Yoruba",
+          0.0016,
+          1
+        ],
+        [
+          "Igbo",
+          0.0012,
+          1
+        ],
+        [
+          "Nigerian Pidgin",
+          null,
+          1
+        ],
+        [
+          "Fulfulde",
+          null,
+          1
+        ],
+        [
+          "Kanuri",
+          null,
+          1
+        ],
+        [
+          "Ibibio",
+          null,
+          1
+        ]
+      ]
+    },
+    "NER": {
+      "name": "Niger",
+      "total": 20,
+      "additional": 12,
+      "langs": [
+        [
+          "Hausa",
+          0.0026,
+          1
+        ],
+        [
+          "Arabic",
+          0.65,
+          1
+        ],
+        [
+          "French",
+          4.8,
+          0
+        ],
+        [
+          "Zarma-Songhai",
+          null,
+          1
+        ],
+        [
+          "Fulfulde",
+          null,
+          1
+        ],
+        [
+          "Tamasheq",
+          null,
+          1
+        ],
+        [
+          "Kanuri",
+          null,
+          1
+        ],
+        [
+          "Tebu",
+          null,
+          1
+        ]
+      ]
+    },
+    "MLI": {
+      "name": "Mali",
+      "total": 80,
+      "additional": 72,
+      "langs": [
+        [
+          "French",
+          4.8,
+          0
+        ],
+        [
+          "Bambara",
+          null,
+          1
+        ],
+        [
+          "Fulfulde",
+          null,
+          1
+        ],
+        [
+          "Dogon",
+          null,
+          1
+        ],
+        [
+          "Soninke",
+          null,
+          1
+        ],
+        [
+          "Songhay",
+          null,
+          1
+        ],
+        [
+          "Tamasheq",
+          null,
+          1
+        ],
+        [
+          "Senufo",
+          null,
+          1
+        ]
+      ]
+    },
+    "GHA": {
+      "name": "Ghana",
+      "total": 80,
+      "additional": 72,
+      "langs": [
+        [
+          "English",
+          40.58,
+          0
+        ],
+        [
+          "Akan",
+          0.0004,
+          1
+        ],
+        [
+          "Ewe",
+          null,
+          1
+        ],
+        [
+          "Dagbani",
+          null,
+          1
+        ],
+        [
+          "Ga",
+          null,
+          1
+        ],
+        [
+          "Dagaare",
+          null,
+          1
+        ],
+        [
+          "Nzema",
+          null,
+          1
+        ],
+        [
+          "Gonja",
+          null,
+          1
+        ]
+      ]
+    },
+    "EGY": {
+      "name": "Egypt",
+      "total": 13,
+      "additional": 5,
+      "langs": [
+        [
+          "Modern Standard Arabic",
+          0.65,
+          1
+        ],
+        [
+          "Egyptian Arabic",
+          null,
+          1
+        ],
+        [
+          "Sa'idi Arabic",
+          null,
+          1
+        ],
+        [
+          "Nobiin",
+          null,
+          1
+        ],
+        [
+          "Siwi",
+          null,
+          1
+        ],
+        [
+          "Beja",
+          null,
+          1
+        ],
+        [
+          "Domari",
+          null,
+          1
+        ],
+        [
+          "Coptic",
+          null,
+          1
+        ]
+      ]
+    },
+    "MAR": {
+      "name": "Morocco",
+      "total": 14,
+      "additional": 6,
+      "langs": [
+        [
+          "Modern Standard Arabic",
+          0.65,
+          1
+        ],
+        [
+          "French",
+          4.8,
+          0
+        ],
+        [
+          "Standard Moroccan Amazigh",
+          null,
+          1
+        ],
+        [
+          "Moroccan Arabic (Darija)",
+          null,
+          1
+        ],
+        [
+          "Tashelhit",
+          null,
+          1
+        ],
+        [
+          "Central Atlas Tamazight",
+          null,
+          1
+        ],
+        [
+          "Tarifit",
+          null,
+          1
+        ],
+        [
+          "Hassaniya Arabic",
+          null,
+          1
+        ]
+      ]
+    },
+    "KEN": {
+      "name": "Kenya",
+      "total": 68,
+      "additional": 60,
+      "langs": [
+        [
+          "English",
+          40.58,
+          0
+        ],
+        [
+          "Swahili",
+          0.0117,
+          1
+        ],
+        [
+          "Kikuyu",
+          null,
+          1
+        ],
+        [
+          "Luhya",
+          null,
+          1
+        ],
+        [
+          "Kamba",
+          null,
+          1
+        ],
+        [
+          "Dholuo",
+          null,
+          1
+        ],
+        [
+          "Kalenjin",
+          null,
+          1
+        ],
+        [
+          "Somali",
+          0.0055,
+          1
+        ]
+      ]
+    },
+    "ETH": {
+      "name": "Ethiopia",
+      "total": 90,
+      "additional": 82,
+      "langs": [
+        [
+          "Amharic",
+          0.0037,
+          1
+        ],
+        [
+          "Oromo",
+          0.0006,
+          1
+        ],
+        [
+          "Somali",
+          0.0055,
+          1
+        ],
+        [
+          "Tigrinya",
+          null,
+          1
+        ],
+        [
+          "Sidamo",
+          null,
+          1
+        ],
+        [
+          "Wolaytta",
+          null,
+          1
+        ],
+        [
+          "Gurage",
+          null,
+          1
+        ],
+        [
+          "Afar",
+          null,
+          1
+        ]
+      ]
+    },
+    "ZAF": {
+      "name": "South Africa",
+      "total": 35,
+      "additional": 27,
+      "langs": [
+        [
+          "English",
+          40.58,
+          1
+        ],
+        [
+          "Afrikaans",
+          0.0078,
+          1
+        ],
+        [
+          "Zulu",
+          0.0015,
+          1
+        ],
+        [
+          "Xhosa",
+          0.0009,
+          1
+        ],
+        [
+          "Northern Sotho (Sepedi)",
+          null,
+          1
+        ],
+        [
+          "Southern Sotho",
+          null,
+          1
+        ],
+        [
+          "Tswana",
+          null,
+          1
+        ],
+        [
+          "Tsonga",
+          null,
+          1
+        ]
+      ]
+    },
+    "CHN": {
+      "name": "China",
+      "total": 300,
+      "additional": 292,
+      "langs": [
+        [
+          "Standard Mandarin (Chinese)",
+          4.43,
+          1
+        ],
+        [
+          "Cantonese (Yue)",
+          null,
+          1
+        ],
+        [
+          "Wu",
+          null,
+          1
+        ],
+        [
+          "Min",
+          null,
+          1
+        ],
+        [
+          "Hakka",
+          null,
+          1
+        ],
+        [
+          "Zhuang",
+          null,
+          1
+        ],
+        [
+          "Tibetan",
+          0.0012,
+          1
+        ],
+        [
+          "Uyghur",
+          0.0029,
+          1
+        ]
+      ]
+    },
+    "JPN": {
+      "name": "Japan",
+      "total": 15,
+      "additional": 7,
+      "langs": [
+        [
+          "Japanese",
+          5.32,
+          1
+        ],
+        [
+          "Ainu",
+          null,
+          1
+        ],
+        [
+          "Okinawan",
+          null,
+          1
+        ],
+        [
+          "Amami",
+          null,
+          1
+        ],
+        [
+          "Kunigami",
+          null,
+          1
+        ],
+        [
+          "Miyako",
+          null,
+          1
+        ],
+        [
+          "Yaeyama",
+          null,
+          1
+        ],
+        [
+          "Yonaguni",
+          null,
+          1
+        ]
+      ]
+    },
+    "KOR": {
+      "name": "South Korea",
+      "total": 3,
+      "additional": 0,
+      "langs": [
+        [
+          "Korean",
+          0.84,
+          1
+        ],
+        [
+          "Jeju",
+          null,
+          1
+        ],
+        [
+          "Korean Sign Language",
+          null,
+          1
+        ]
+      ]
+    },
+    "IND": {
+      "name": "India",
+      "total": 780,
+      "additional": 772,
+      "langs": [
+        [
+          "English",
+          40.58,
+          0
+        ],
+        [
+          "Hindi",
+          0.22,
+          1
+        ],
+        [
+          "Bengali",
+          0.11,
+          1
+        ],
+        [
+          "Marathi",
+          0.03,
+          1
+        ],
+        [
+          "Telugu",
+          0.02,
+          1
+        ],
+        [
+          "Tamil",
+          0.049,
+          1
+        ],
+        [
+          "Gujarati",
+          0.0142,
+          1
+        ],
+        [
+          "Urdu",
+          0.033,
+          1
+        ]
+      ]
+    },
+    "PAK": {
+      "name": "Pakistan",
+      "total": 80,
+      "additional": 72,
+      "langs": [
+        [
+          "English",
+          40.58,
+          0
+        ],
+        [
+          "Urdu",
+          0.033,
+          0
+        ],
+        [
+          "Punjabi",
+          0.0085,
+          1
+        ],
+        [
+          "Pashto",
+          0.0039,
+          1
+        ],
+        [
+          "Sindhi",
+          0.0023,
+          1
+        ],
+        [
+          "Saraiki",
+          null,
+          1
+        ],
+        [
+          "Balochi",
+          null,
+          1
+        ],
+        [
+          "Hindko",
+          null,
+          1
+        ]
+      ]
+    },
+    "BGD": {
+      "name": "Bangladesh",
+      "total": 35,
+      "additional": 27,
+      "langs": [
+        [
+          "Bengali (Bangla)",
+          0.11,
+          1
+        ],
+        [
+          "Chakma",
+          null,
+          1
+        ],
+        [
+          "Santali",
+          null,
+          1
+        ],
+        [
+          "Garo",
+          null,
+          1
+        ],
+        [
+          "Tripuri",
+          null,
+          1
+        ],
+        [
+          "Mizo",
+          null,
+          1
+        ],
+        [
+          "Khasi",
+          null,
+          1
+        ],
+        [
+          "Sadri",
+          null,
+          1
+        ]
+      ]
+    },
+    "VNM": {
+      "name": "Vietnam",
+      "total": 54,
+      "additional": 46,
+      "langs": [
+        [
+          "Vietnamese",
+          1.06,
+          1
+        ],
+        [
+          "Chinese",
+          4.43,
+          1
+        ],
+        [
+          "Tay",
+          null,
+          1
+        ],
+        [
+          "Thai (Tai)",
+          0.37,
+          1
+        ],
+        [
+          "Muong",
+          null,
+          1
+        ],
+        [
+          "Khmer",
+          0.012,
+          1
+        ],
+        [
+          "Nung",
+          null,
+          1
+        ],
+        [
+          "Hmong",
+          null,
+          1
+        ]
+      ]
+    },
+    "THA": {
+      "name": "Thailand",
+      "total": 75,
+      "additional": 67,
+      "langs": [
+        [
+          "Central Thai",
+          0.37,
+          1
+        ],
+        [
+          "Isan",
+          null,
+          1
+        ],
+        [
+          "Northern Thai (Kham Muang)",
+          null,
+          1
+        ],
+        [
+          "Southern Thai (Pak Tai)",
+          null,
+          1
+        ],
+        [
+          "Northern Khmer",
+          null,
+          1
+        ],
+        [
+          "Pattani Malay (Yawi)",
+          null,
+          1
+        ],
+        [
+          "Phu Thai",
+          null,
+          1
+        ],
+        [
+          "Karen",
+          null,
+          1
+        ]
+      ]
+    },
+    "IDN": {
+      "name": "Indonesia",
+      "total": 718,
+      "additional": 710,
+      "langs": [
+        [
+          "Indonesian",
+          1.09,
+          1
+        ],
+        [
+          "Javanese",
+          0.0029,
+          1
+        ],
+        [
+          "Sundanese",
+          null,
+          1
+        ],
+        [
+          "Madurese",
+          null,
+          1
+        ],
+        [
+          "Minangkabau",
+          null,
+          1
+        ],
+        [
+          "Buginese",
+          null,
+          1
+        ],
+        [
+          "Batak Toba",
+          null,
+          1
+        ],
+        [
+          "Balinese",
+          null,
+          1
+        ]
+      ]
+    },
+    "PHL": {
+      "name": "Philippines",
+      "total": 181,
+      "additional": 173,
+      "langs": [
+        [
+          "English",
+          40.58,
+          0
+        ],
+        [
+          "Filipino (Tagalog)",
+          0.0114,
+          1
+        ],
+        [
+          "Cebuano",
+          null,
+          1
+        ],
+        [
+          "Ilocano",
+          null,
+          1
+        ],
+        [
+          "Hiligaynon",
+          null,
+          1
+        ],
+        [
+          "Waray",
+          null,
+          1
+        ],
+        [
+          "Kapampangan",
+          null,
+          1
+        ],
+        [
+          "Central Bikol",
+          null,
+          1
+        ]
+      ]
+    },
+    "SAU": {
+      "name": "Saudi Arabia",
+      "total": 8,
+      "additional": 0,
+      "langs": [
+        [
+          "Arabic (Modern Standard)",
+          0.65,
+          1
+        ],
+        [
+          "Najdi Arabic",
+          null,
+          1
+        ],
+        [
+          "Hejazi Arabic",
+          null,
+          1
+        ],
+        [
+          "Gulf Arabic",
+          null,
+          1
+        ],
+        [
+          "Southern Hejaz-Tihama Arabic",
+          null,
+          1
+        ],
+        [
+          "Faifi",
+          null,
+          1
+        ],
+        [
+          "Mehri",
+          null,
+          1
+        ],
+        [
+          "Saudi Sign Language",
+          null,
+          1
+        ]
+      ]
+    },
+    "AUS": {
+      "name": "Australia",
+      "total": 250,
+      "additional": 242,
+      "langs": [
+        [
+          "English",
+          40.58,
+          1
+        ],
+        [
+          "Kriol",
+          null,
+          1
+        ],
+        [
+          "Yumplatok (Torres Strait Creole)",
+          null,
+          1
+        ],
+        [
+          "Pitjantjatjara",
+          null,
+          1
+        ],
+        [
+          "Warlpiri",
+          null,
+          1
+        ],
+        [
+          "Djambarrpuyngu",
+          null,
+          1
+        ],
+        [
+          "Tiwi",
+          null,
+          1
+        ],
+        [
+          "Murrinh Patha",
+          null,
+          1
+        ]
+      ]
+    },
+    "PNG": {
+      "name": "Papua New Guinea",
+      "total": 840,
+      "additional": 832,
+      "langs": [
+        [
+          "English",
+          40.58,
+          0
+        ],
+        [
+          "Tok Pisin",
+          null,
+          1
+        ],
+        [
+          "Hiri Motu",
+          null,
+          1
+        ],
+        [
+          "Enga",
+          null,
+          1
+        ],
+        [
+          "Melpa",
+          null,
+          1
+        ],
+        [
+          "Kuanua (Tolai)",
+          null,
+          1
+        ],
+        [
+          "Huli",
+          null,
+          1
+        ],
+        [
+          "Kuman",
+          null,
+          1
+        ]
+      ]
+    },
+    "DZA": {
+      "name": "Algeria",
+      "total": 18,
+      "additional": 12,
+      "langs": [
+        [
+          "Modern Standard Arabic",
+          0.65,
+          1
+        ],
+        [
+          "Algerian Arabic",
+          null,
+          1
+        ],
+        [
+          "Standard Algerian Tamazight",
+          null,
+          1
+        ],
+        [
+          "Kabyle",
+          null,
+          1
+        ],
+        [
+          "Chaouia (Shawiya)",
+          null,
+          1
+        ],
+        [
+          "Mozabite",
+          null,
+          1
+        ]
+      ]
+    },
+    "TUN": {
+      "name": "Tunisia",
+      "total": 7,
+      "additional": 3,
+      "langs": [
+        [
+          "Modern Standard Arabic",
+          0.65,
+          1
+        ],
+        [
+          "Tunisian Arabic",
+          null,
+          1
+        ],
+        [
+          "Tamazight (Djerbi/Jerba Berber)",
+          null,
+          1
+        ],
+        [
+          "Matmata Berber",
+          null,
+          1
+        ]
+      ]
+    },
+    "SEN": {
+      "name": "Senegal",
+      "total": 36,
+      "additional": 28,
+      "langs": [
+        [
+          "French",
+          4.8,
+          0
+        ],
+        [
+          "Wolof",
+          0.0002,
+          1
+        ],
+        [
+          "Pulaar (Fula)",
+          null,
+          1
+        ],
+        [
+          "Serer",
+          null,
+          1
+        ],
+        [
+          "Jola (Diola)",
+          null,
+          1
+        ],
+        [
+          "Mandinka",
+          null,
+          1
+        ],
+        [
+          "Soninke",
+          null,
+          1
+        ],
+        [
+          "Balanta-Ganja",
+          null,
+          1
+        ]
+      ]
+    },
+    "CIV": {
+      "name": "Cote d'Ivoire",
+      "total": 78,
+      "additional": 70,
+      "langs": [
+        [
+          "French",
+          4.8,
+          0
+        ],
+        [
+          "Baoule",
+          null,
+          1
+        ],
+        [
+          "Bete",
+          null,
+          1
+        ],
+        [
+          "Senari (Senufo)",
+          null,
+          1
+        ],
+        [
+          "Dan",
+          null,
+          1
+        ],
+        [
+          "Anyin",
+          null,
+          1
+        ],
+        [
+          "Guere",
+          null,
+          1
+        ],
+        [
+          "Guro",
+          null,
+          1
+        ]
+      ]
+    },
+    "CMR": {
+      "name": "Cameroon",
+      "total": 250,
+      "additional": 242,
+      "langs": [
+        [
+          "French",
+          4.8,
+          0
+        ],
+        [
+          "English",
+          40.58,
+          0
+        ],
+        [
+          "Ewondo",
+          null,
+          1
+        ],
+        [
+          "Bulu",
+          null,
+          1
+        ],
+        [
+          "Bamum",
+          null,
+          1
+        ],
+        [
+          "Ghomala",
+          null,
+          1
+        ],
+        [
+          "Bassa",
+          null,
+          1
+        ],
+        [
+          "Yemba",
+          null,
+          1
+        ]
+      ]
+    },
+    "UGA": {
+      "name": "Uganda",
+      "total": 43,
+      "additional": 35,
+      "langs": [
+        [
+          "English",
+          40.58,
+          0
+        ],
+        [
+          "Swahili",
+          0.0117,
+          0
+        ],
+        [
+          "Luganda",
+          null,
+          1
+        ],
+        [
+          "Runyankole",
+          null,
+          1
+        ],
+        [
+          "Lusoga",
+          null,
+          1
+        ],
+        [
+          "Ateso",
+          null,
+          1
+        ],
+        [
+          "Acholi (Southern Luo)",
+          null,
+          1
+        ],
+        [
+          "Lugbara",
+          null,
+          1
+        ]
+      ]
+    },
+    "TZA": {
+      "name": "Tanzania",
+      "total": 125,
+      "additional": 117,
+      "langs": [
+        [
+          "Swahili",
+          0.0117,
+          1
+        ],
+        [
+          "English",
+          40.58,
+          0
+        ],
+        [
+          "Sukuma",
+          null,
+          1
+        ],
+        [
+          "Haya",
+          null,
+          1
+        ],
+        [
+          "Makonde",
+          null,
+          1
+        ],
+        [
+          "Nyamwezi",
+          null,
+          1
+        ],
+        [
+          "Hehe",
+          null,
+          1
+        ],
+        [
+          "Gogo",
+          null,
+          1
+        ]
+      ]
+    },
+    "COD": {
+      "name": "DR Congo",
+      "total": 215,
+      "additional": 210,
+      "langs": [
+        [
+          "French",
+          4.8,
+          0
+        ],
+        [
+          "Lingala",
+          null,
+          1
+        ],
+        [
+          "Kikongo ya Leta",
+          null,
+          1
+        ],
+        [
+          "Swahili",
+          0.0117,
+          1
+        ],
+        [
+          "Tshiluba",
+          null,
+          1
+        ]
+      ]
+    },
+    "ZWE": {
+      "name": "Zimbabwe",
+      "total": 19,
+      "additional": 11,
+      "langs": [
+        [
+          "Shona",
+          null,
+          1
+        ],
+        [
+          "Ndebele",
+          null,
+          1
+        ],
+        [
+          "English",
+          40.58,
+          0
+        ],
+        [
+          "Tonga",
+          null,
+          1
+        ],
+        [
+          "Kalanga",
+          null,
+          1
+        ],
+        [
+          "Nambya",
+          null,
+          1
+        ],
+        [
+          "Venda",
+          null,
+          1
+        ],
+        [
+          "Ndau",
+          null,
+          1
+        ]
+      ]
+    },
+    "MOZ": {
+      "name": "Mozambique",
+      "total": 43,
+      "additional": 35,
+      "langs": [
+        [
+          "Portuguese",
+          2.52,
+          0
+        ],
+        [
+          "Emakhuwa",
+          null,
+          1
+        ],
+        [
+          "Xitsonga",
+          null,
+          1
+        ],
+        [
+          "Cisena",
+          null,
+          1
+        ],
+        [
+          "Elomwe",
+          null,
+          1
+        ],
+        [
+          "Echuwabo",
+          null,
+          1
+        ],
+        [
+          "Cindau",
+          null,
+          1
+        ],
+        [
+          "XiTswa",
+          null,
+          1
+        ]
+      ]
+    },
+    "SDN": {
+      "name": "Sudan",
+      "total": 70,
+      "additional": 62,
+      "langs": [
+        [
+          "Arabic",
+          0.65,
+          1
+        ],
+        [
+          "English",
+          40.58,
+          0
+        ],
+        [
+          "Dinka",
+          null,
+          1
+        ],
+        [
+          "Nuer",
+          null,
+          1
+        ],
+        [
+          "Beja",
+          null,
+          1
+        ],
+        [
+          "Fur",
+          null,
+          1
+        ],
+        [
+          "Nubian",
+          null,
+          1
+        ],
+        [
+          "Zaghawa",
+          null,
+          1
+        ]
+      ]
+    },
+    "MDG": {
+      "name": "Madagascar",
+      "total": 11,
+      "additional": 9,
+      "langs": [
+        [
+          "Malagasy",
+          0.0034,
+          1
+        ],
+        [
+          "French",
+          4.8,
+          0
+        ]
+      ]
+    },
+    "RWA": {
+      "name": "Rwanda",
+      "total": 5,
+      "additional": 1,
+      "langs": [
+        [
+          "Kinyarwanda",
+          0.0028,
+          1
+        ],
+        [
+          "English",
+          40.58,
+          0
+        ],
+        [
+          "French",
+          4.8,
+          0
+        ],
+        [
+          "Swahili",
+          0.0117,
+          0
+        ]
+      ]
+    },
+    "IRN": {
+      "name": "Iran",
+      "total": 85,
+      "additional": 77,
+      "langs": [
+        [
+          "Persian",
+          0.7,
+          1
+        ],
+        [
+          "Azerbaijani",
+          0.062,
+          1
+        ],
+        [
+          "Kurdish",
+          0.0064,
+          1
+        ],
+        [
+          "Gilaki",
+          null,
+          1
+        ],
+        [
+          "Mazandarani",
+          null,
+          1
+        ],
+        [
+          "Luri-Bakhtiari",
+          null,
+          1
+        ],
+        [
+          "Balochi",
+          null,
+          1
+        ],
+        [
+          "Arabic",
+          0.65,
+          1
+        ]
+      ]
+    },
+    "IRQ": {
+      "name": "Iraq",
+      "total": 8,
+      "additional": 3,
+      "langs": [
+        [
+          "Arabic",
+          0.65,
+          1
+        ],
+        [
+          "Kurdish (Sorani)",
+          0.0064,
+          1
+        ],
+        [
+          "Turkmen",
+          null,
+          1
+        ],
+        [
+          "Neo-Aramaic (Assyrian)",
+          null,
+          1
+        ],
+        [
+          "Armenian",
+          0.034,
+          1
+        ]
+      ]
+    },
+    "ISR": {
+      "name": "Israel",
+      "total": 10,
+      "additional": 7,
+      "langs": [
+        [
+          "Hebrew",
+          0.25,
+          1
+        ],
+        [
+          "Arabic",
+          0.65,
+          1
+        ],
+        [
+          "Yiddish",
+          0.0016,
+          1
+        ]
+      ]
+    },
+    "AFG": {
+      "name": "Afghanistan",
+      "total": 40,
+      "additional": 33,
+      "langs": [
+        [
+          "Dari (Afghan Persian)",
+          0.7,
+          1
+        ],
+        [
+          "Pashto",
+          0.0039,
+          1
+        ],
+        [
+          "Uzbek",
+          0.031,
+          1
+        ],
+        [
+          "Turkmen",
+          null,
+          1
+        ],
+        [
+          "Balochi",
+          null,
+          1
+        ],
+        [
+          "Nuristani",
+          null,
+          1
+        ],
+        [
+          "Pashayi",
+          null,
+          1
+        ]
+      ]
+    },
+    "NPL": {
+      "name": "Nepal",
+      "total": 124,
+      "additional": 116,
+      "langs": [
+        [
+          "Nepali",
+          0.061,
+          1
+        ],
+        [
+          "Maithili",
+          null,
+          1
+        ],
+        [
+          "Bhojpuri",
+          null,
+          1
+        ],
+        [
+          "Tharu",
+          null,
+          1
+        ],
+        [
+          "Tamang",
+          null,
+          1
+        ],
+        [
+          "Newari (Nepal Bhasha)",
+          null,
+          1
+        ],
+        [
+          "Magar",
+          null,
+          1
+        ],
+        [
+          "Awadhi",
+          null,
+          1
+        ]
+      ]
+    },
+    "LKA": {
+      "name": "Sri Lanka",
+      "total": 7,
+      "additional": 3,
+      "langs": [
+        [
+          "Sinhala",
+          0.0094,
+          1
+        ],
+        [
+          "Tamil",
+          0.049,
+          1
+        ],
+        [
+          "Sri Lankan Malay",
+          null,
+          1
+        ],
+        [
+          "Vedda",
+          null,
+          1
+        ]
+      ]
+    },
+    "MMR": {
+      "name": "Myanmar",
+      "total": 117,
+      "additional": 111,
+      "langs": [
+        [
+          "Burmese",
+          0.017,
+          1
+        ],
+        [
+          "Shan",
+          null,
+          1
+        ],
+        [
+          "Karen",
+          null,
+          1
+        ],
+        [
+          "Kachin",
+          null,
+          1
+        ],
+        [
+          "Chin",
+          null,
+          1
+        ],
+        [
+          "Mon",
+          null,
+          1
+        ]
+      ]
+    },
+    "MYS": {
+      "name": "Malaysia",
+      "total": 137,
+      "additional": 129,
+      "langs": [
+        [
+          "Malay",
+          0.09,
+          1
+        ],
+        [
+          "Tamil",
+          0.049,
+          1
+        ],
+        [
+          "Hokkien",
+          null,
+          1
+        ],
+        [
+          "Cantonese",
+          null,
+          1
+        ],
+        [
+          "Hakka",
+          null,
+          1
+        ],
+        [
+          "Iban",
+          null,
+          1
+        ],
+        [
+          "Teochew",
+          null,
+          1
+        ],
+        [
+          "Javanese",
+          0.0029,
+          1
+        ]
+      ]
+    },
+    "SGP": {
+      "name": "Singapore",
+      "total": 20,
+      "additional": 12,
+      "langs": [
+        [
+          "English",
+          40.58,
+          1
+        ],
+        [
+          "Mandarin (Chinese)",
+          4.43,
+          1
+        ],
+        [
+          "Malay",
+          0.09,
+          1
+        ],
+        [
+          "Tamil",
+          0.049,
+          1
+        ],
+        [
+          "Hokkien",
+          null,
+          1
+        ],
+        [
+          "Cantonese",
+          null,
+          1
+        ],
+        [
+          "Teochew",
+          null,
+          1
+        ],
+        [
+          "Hainanese",
+          null,
+          1
+        ]
+      ]
+    },
+    "KAZ": {
+      "name": "Kazakhstan",
+      "total": 25,
+      "additional": 18,
+      "langs": [
+        [
+          "Kazakh",
+          0.047,
+          1
+        ],
+        [
+          "Russian",
+          6.82,
+          1
+        ],
+        [
+          "Uzbek",
+          0.031,
+          1
+        ],
+        [
+          "Uyghur",
+          0.0029,
+          1
+        ],
+        [
+          "Dungan",
+          null,
+          1
+        ],
+        [
+          "Ili Turki",
+          null,
+          1
+        ],
+        [
+          "Ingush",
+          null,
+          1
+        ]
+      ]
+    },
+    "UZB": {
+      "name": "Uzbekistan",
+      "total": 15,
+      "additional": 9,
+      "langs": [
+        [
+          "Uzbek",
+          0.031,
+          1
+        ],
+        [
+          "Russian",
+          6.82,
+          1
+        ],
+        [
+          "Tajik",
+          null,
+          1
+        ],
+        [
+          "Karakalpak",
+          null,
+          1
+        ],
+        [
+          "Kazakh",
+          0.047,
+          1
+        ],
+        [
+          "Kyrgyz",
+          0.0127,
+          1
+        ]
+      ]
+    },
+    "MNG": {
+      "name": "Mongolia",
+      "total": 13,
+      "additional": 8,
+      "langs": [
+        [
+          "Mongolian (Khalkha)",
+          0.016,
+          1
+        ],
+        [
+          "Kazakh",
+          0.047,
+          1
+        ],
+        [
+          "Buriat Mongolian",
+          null,
+          1
+        ],
+        [
+          "Oirat (Western Mongolian)",
+          null,
+          1
+        ],
+        [
+          "Tuvan",
+          null,
+          1
+        ]
+      ]
+    },
+    "NOR": {
+      "name": "Norway",
+      "total": 12,
+      "additional": 7,
+      "langs": [
+        [
+          "Norwegian (Bokmal)",
+          0.34,
+          1
+        ],
+        [
+          "Norwegian (Nynorsk)",
+          0.014,
+          1
+        ],
+        [
+          "Northern Sami",
+          null,
+          1
+        ],
+        [
+          "Kven Finnish",
+          null,
+          1
+        ],
+        [
+          "Norwegian Traveller (Romani)",
+          null,
+          1
+        ]
+      ]
+    },
+    "FIN": {
+      "name": "Finland",
+      "total": 15,
+      "additional": 10,
+      "langs": [
+        [
+          "Finnish",
+          0.38,
+          1
+        ],
+        [
+          "Swedish",
+          0.74,
+          1
+        ],
+        [
+          "Sami (Northern/Inari/Skolt)",
+          null,
+          1
+        ],
+        [
+          "Karelian",
+          null,
+          1
+        ],
+        [
+          "Finnish Romani",
+          null,
+          1
+        ]
+      ]
+    },
+    "DNK": {
+      "name": "Denmark",
+      "total": 10,
+      "additional": 6,
+      "langs": [
+        [
+          "Danish",
+          0.53,
+          1
+        ],
+        [
+          "Faroese",
+          0.0055,
+          1
+        ],
+        [
+          "Greenlandic (Kalaallisut)",
+          null,
+          1
+        ],
+        [
+          "German",
+          5.99,
+          1
+        ]
+      ]
+    },
+    "BEL": {
+      "name": "Belgium",
+      "total": 13,
+      "additional": 5,
+      "langs": [
+        [
+          "Dutch",
+          1.82,
+          1
+        ],
+        [
+          "French",
+          4.8,
+          1
+        ],
+        [
+          "German",
+          5.99,
+          1
+        ],
+        [
+          "Walloon",
+          null,
+          1
+        ],
+        [
+          "West Flemish",
+          null,
+          1
+        ],
+        [
+          "Limburgish",
+          null,
+          1
+        ],
+        [
+          "Picard",
+          null,
+          1
+        ],
+        [
+          "Brabantian",
+          null,
+          1
+        ]
+      ]
+    },
+    "CHE": {
+      "name": "Switzerland",
+      "total": 37,
+      "additional": 30,
+      "langs": [
+        [
+          "German",
+          5.99,
+          1
+        ],
+        [
+          "French",
+          4.8,
+          1
+        ],
+        [
+          "Italian",
+          2.49,
+          1
+        ],
+        [
+          "Romansh",
+          null,
+          1
+        ],
+        [
+          "Franco-Provencal",
+          null,
+          1
+        ],
+        [
+          "Walser German",
+          null,
+          1
+        ],
+        [
+          "Lombard",
+          null,
+          1
+        ]
+      ]
+    },
+    "IRL": {
+      "name": "Ireland",
+      "total": 8,
+      "additional": 4,
+      "langs": [
+        [
+          "Irish",
+          0.0063,
+          0
+        ],
+        [
+          "English",
+          40.58,
+          1
+        ],
+        [
+          "Ulster Scots",
+          null,
+          1
+        ],
+        [
+          "Shelta",
+          null,
+          1
+        ]
+      ]
+    },
+    "ROU": {
+      "name": "Romania",
+      "total": 15,
+      "additional": 7,
+      "langs": [
+        [
+          "Romanian",
+          0.57,
+          1
+        ],
+        [
+          "Hungarian",
+          0.53,
+          1
+        ],
+        [
+          "Romani",
+          null,
+          1
+        ],
+        [
+          "German",
+          5.99,
+          1
+        ],
+        [
+          "Ukrainian",
+          0.8,
+          1
+        ],
+        [
+          "Turkish",
+          1.35,
+          1
+        ],
+        [
+          "Tatar",
+          0.0075,
+          1
+        ],
+        [
+          "Serbian",
+          null,
+          1
+        ]
+      ]
+    },
+    "HUN": {
+      "name": "Hungary",
+      "total": 14,
+      "additional": 7,
+      "langs": [
+        [
+          "Hungarian",
+          0.53,
+          1
+        ],
+        [
+          "German",
+          5.99,
+          1
+        ],
+        [
+          "Romani",
+          null,
+          1
+        ],
+        [
+          "Croatian",
+          0.22,
+          1
+        ],
+        [
+          "Slovak",
+          0.41,
+          1
+        ],
+        [
+          "Romanian",
+          0.57,
+          1
+        ],
+        [
+          "Serbian",
+          null,
+          1
+        ]
+      ]
+    },
+    "GEO": {
+      "name": "Georgia",
+      "total": 12,
+      "additional": 6,
+      "langs": [
+        [
+          "Georgian",
+          0.045,
+          1
+        ],
+        [
+          "Azerbaijani",
+          0.062,
+          1
+        ],
+        [
+          "Armenian",
+          0.034,
+          1
+        ],
+        [
+          "Ossetian",
+          null,
+          1
+        ],
+        [
+          "Abkhaz",
+          null,
+          0
+        ],
+        [
+          "Russian",
+          6.82,
+          0
+        ]
+      ]
+    },
+    "CHL": {
+      "name": "Chile",
+      "total": 10,
+      "additional": 3,
+      "langs": [
+        [
+          "Spanish",
+          4.64,
+          1
+        ],
+        [
+          "Mapudungun",
+          null,
+          1
+        ],
+        [
+          "Aymara",
+          0.0001,
+          1
+        ],
+        [
+          "Rapa Nui",
+          null,
+          1
+        ],
+        [
+          "Chilean Quechua",
+          0.0009,
+          1
+        ],
+        [
+          "Kunza",
+          null,
+          1
+        ],
+        [
+          "Yaghan",
+          null,
+          1
+        ]
+      ]
+    },
+    "VEN": {
+      "name": "Venezuela",
+      "total": 40,
+      "additional": 34,
+      "langs": [
+        [
+          "Spanish",
+          4.64,
+          1
+        ],
+        [
+          "Wayuu",
+          null,
+          1
+        ],
+        [
+          "Warao",
+          null,
+          1
+        ],
+        [
+          "Pemon",
+          null,
+          1
+        ],
+        [
+          "Piaroa",
+          null,
+          1
+        ],
+        [
+          "Jivi (Guahibo)",
+          null,
+          1
+        ]
+      ]
+    },
+    "ECU": {
+      "name": "Ecuador",
+      "total": 24,
+      "additional": 17,
+      "langs": [
+        [
+          "Spanish",
+          4.64,
+          1
+        ],
+        [
+          "Kichwa",
+          0.0009,
+          1
+        ],
+        [
+          "Shuar",
+          null,
+          1
+        ],
+        [
+          "Achuar-Shiwiar",
+          null,
+          1
+        ],
+        [
+          "Awa-Cuaiquer",
+          null,
+          1
+        ],
+        [
+          "Cha'palaachi (Chachi)",
+          null,
+          1
+        ],
+        [
+          "Waorani",
+          null,
+          1
+        ]
+      ]
+    },
+    "BOL": {
+      "name": "Bolivia",
+      "total": 37,
+      "additional": 33,
+      "langs": [
+        [
+          "Spanish",
+          4.64,
+          1
+        ],
+        [
+          "Quechua",
+          0.0009,
+          1
+        ],
+        [
+          "Aymara",
+          0.0001,
+          1
+        ],
+        [
+          "Guarani",
+          0.0008,
+          0
+        ]
+      ]
+    },
+    "PRY": {
+      "name": "Paraguay",
+      "total": 20,
+      "additional": 12,
+      "langs": [
+        [
+          "Spanish",
+          4.64,
+          1
+        ],
+        [
+          "Guarani",
+          0.0008,
+          1
+        ],
+        [
+          "Nivacle",
+          null,
+          1
+        ],
+        [
+          "Ayoreo",
+          null,
+          1
+        ],
+        [
+          "Ache",
+          null,
+          1
+        ],
+        [
+          "Maka",
+          null,
+          1
+        ],
+        [
+          "Chamacoco (Ishir)",
+          null,
+          1
+        ],
+        [
+          "Toba Qom",
+          null,
+          1
+        ]
+      ]
+    },
+    "NZL": {
+      "name": "New Zealand",
+      "total": 5,
+      "additional": 2,
+      "langs": [
+        [
+          "English",
+          40.58,
+          1
+        ],
+        [
+          "Maori",
+          0.0018,
+          0
+        ],
+        [
+          "New Zealand Sign Language",
+          null,
+          1
+        ]
+      ]
+    }
+  }
+}

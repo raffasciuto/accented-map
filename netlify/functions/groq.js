@@ -1,7 +1,7 @@
-// Proxies browser requests to the Groq API so GROQ_API_KEY never reaches the client.
-// Body: { endpoint: "transcriptions" | "chat/completions", payload }
-// "transcriptions" payload carries the audio as base64 (JSON has no multipart), which this
-// function decodes back into a real file before forwarding as multipart/form-data to Groq.
+// Proxies browser requests to the Groq API (Whisper transcription only) so GROQ_API_KEY never
+// reaches the client. Body: { endpoint: "transcriptions", payload }
+// The payload carries the audio as base64 (JSON has no multipart), which this function decodes
+// back into a real file before forwarding as multipart/form-data to Groq.
 // Shared-secret check: raises the bar against scripts hitting this endpoint blind (the URL is
 // visible in the page's own source, so this can't be a true secret against someone who actually
 // loads the page and inspects requests — the real backstop against a surprise bill is a spending
@@ -30,37 +30,25 @@ exports.handler = async (event) => {
   }
 
   const { endpoint, payload } = body;
-  if (endpoint !== 'transcriptions' && endpoint !== 'chat/completions') {
+  if (endpoint !== 'transcriptions') {
     return { statusCode: 400, body: JSON.stringify({ error: 'Invalid endpoint' }) };
   }
 
   try {
-    let res;
-    if (endpoint === 'transcriptions') {
-      const { audioBase64, filename, model, response_format } = payload || {};
-      if (!audioBase64) {
-        return { statusCode: 400, body: JSON.stringify({ error: 'Missing audioBase64' }) };
-      }
-      const form = new FormData();
-      form.append('file', new Blob([Buffer.from(audioBase64, 'base64')]), filename || 'audio.webm');
-      form.append('model', model || 'whisper-large-v3');
-      form.append('response_format', response_format || 'verbose_json');
-
-      res = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${apiKey}` },
-        body: form
-      });
-    } else {
-      res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
-      });
+    const { audioBase64, filename, model, response_format } = payload || {};
+    if (!audioBase64) {
+      return { statusCode: 400, body: JSON.stringify({ error: 'Missing audioBase64' }) };
     }
+    const form = new FormData();
+    form.append('file', new Blob([Buffer.from(audioBase64, 'base64')]), filename || 'audio.webm');
+    form.append('model', model || 'whisper-large-v3');
+    form.append('response_format', response_format || 'verbose_json');
+
+    const res = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${apiKey}` },
+      body: form
+    });
 
     const data = await res.json();
     return {

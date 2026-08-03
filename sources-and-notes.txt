@@ -1,0 +1,65 @@
+HOT TAKE MAP — COUNTRY LANGUAGE DATASET: SOURCES & METHODOLOGY NOTES
+======================================================================
+
+Generated from about-country-languages.json — 82 countries.
+
+DATASET-WIDE SOURCES
+----------------------------------------------------------------------
+Web-share percentages: Common Crawl CC-MAIN-2026-30
+Cross-referenced with: W3Techs, Aug 2026
+Language lists: Wikipedia, Languages of <Country> (e.g. https://en.wikipedia.org/wiki/Languages_of_<Country>)
+
+SCHEMA / METHODOLOGY
+----------------------------------------------------------------------
+langs: [name, webPct|null, primary] - primary is 1 if this language is genuinely the first/home language of a real population in this country today (whether the country's ethnic majority, or a real native minority/settler-descended community), 0 if it is an administrative/elite lingua franca layered over a population whose real everyday language is something else (English in Nigeria, Urdu in Pakistan, French in Senegal). A language only counts toward a country's AI-representation score if primary=1. Locally-formed creoles (Nigerian Pidgin, Tok Pisin, Papiamento) count as primary. Colonial-origin languages CAN be primary when they became a population's genuine native tongue through settlement (English in USA/UK/Australia/Canada; Spanish in Argentina/Mexico/Peru/Colombia; Portuguese in Brazil) - the test is 'is this really someone's mother tongue here', not the language's origin. Migrant/diaspora languages (brought by recent immigrant communities, not the country's own people) are omitted entirely, not merely flagged 0.
+
+total: Total distinct languages the source article documents for that country. Values marked approximate in _notes were not stated outright by the article.
+
+additional: total minus the number of languages named here - rendered as 'and N further documented languages, none tracked in web-crawl data'.
+
+Language representation dataset for the About-page globe. Language lists were extracted from each country's English Wikipedia 'Languages of <Country>' article (fetched 2026-08-02/03). Web-share percentages come from Common Crawl language statistics, crawl CC-MAIN-2026-30, cross-referenced with W3Techs (Aug 2026). A null percentage means the language does not appear in Common Crawl's language table at all - it is not tracked in web-crawl data. That absence is itself the finding, not missing work.
+
+PER-COUNTRY METHODOLOGY NOTES / CAVEATS
+----------------------------------------------------------------------
+United States (USA): No de jure federal official language. Executive Order 14224 (2025) declared English official at federal level by executive act. Spanish kept at primary:0 despite its scale (Puerto Rico, Southwest) - it is real and long-standing but not the majority home language nationally; unlike Nigeria/India's English, this is a judgment call about scale, not administrative-overlay status.
+
+Mexico (MEX): Spanish is de facto national with no constitutional designation; the 68 Indigenous languages are statutorily national languages under the LGDLPI.
+
+Mali (MLI): Since the 2023 constitution the 13 national languages are the official ones; French was demoted to a working language, kept here at primary:0 as a real administrative holdover, not removed.
+
+Niger (NER): Hausa became the sole official language in 2025, replacing French, which is now only a working language (primary:0, kept not removed).
+
+Nigeria (NGA): Wikipedia's claimed French co-official status was never constitutionally implemented and has been dropped entirely - not official, not native, not migrant, just not real.
+
+Pakistan (PAK): Urdu is marked primary:0: it is a lingua franca native to north India, not indigenous to any Pakistani province - the same treatment given to Afrikaans-style administrative overlays elsewhere. Reasonable reviewers could contest this.
+
+Turkey (TUR): Turkish is treated as primary, though Greek, Armenian and Syriac are older languages of Anatolia. A reviewer could reasonably contest this classification.
+
+United Kingdom (GBR): Total of 300 reflects the article's census 'language categories', which include immigrant-community languages, not a purely linguistic count.
+
+Netherlands (NLD): Papiamento reclassified to primary:1 - it is the native creole of the Caribbean Netherlands (Bonaire), not a migrant language, despite the earlier dataset flagging it otherwise.
+
+South Africa (ZAF): English and Afrikaans both marked primary:1 - each is the genuine native home language of a real (non-majority) South African population descended from settlers, not merely an elite administrative layer over the Black-majority population the way Nigeria's English is. This is a deliberate departure from the Nigeria/Kenya/India treatment of English.
+
+Singapore (SGP): All four official languages (English, Mandarin, Malay, Tamil) marked primary:1 - each is a real, substantial home-language community in Singapore (58.1% / 26.6% / 7.0% / 2.2% of homes respectively, 2025), unlike Nigeria-style English with near-zero native speakers.
+
+Kazakhstan (KAZ): Russian marked primary:1 alongside Kazakh - Kazakhstan retains a large, genuinely native (not merely administrative) ethnic-Russian minority.
+
+Finland (FIN): Swedish marked primary:1 alongside Finnish - Finland-Swedes (~5%) are a genuine multi-generational native minority, not an administrative overlay.
+
+Switzerland (CHE): Romansh marked primary:1 despite being a minority even within its home canton - it is federally official and genuinely native, unlike Ireland's Irish or New Zealand's Maori (see IRL/NZL notes).
+
+Ireland (IRL): Irish marked primary:0 - official-in-law as the first official language, but daily-spoken by a small minority outside the Gaeltacht; treated the same as New Zealand's Maori for consistency, despite Irish being indigenous to the territory (unlike Nigeria-style English).
+
+New Zealand (NZL): Maori marked primary:0 - official in law but only ~4% of the population speaks it, even among Maori only ~18%. English, though only de facto official, is the genuine ~95% majority native language.
+
+Afghanistan (AFG): Dari and Pashto both marked primary:1 - Afghanistan has no single clean linguistic majority; Dari functions as the larger lingua franca+L1 combined, Pashto as the largest single ethnic group's language. Treated as a genuine dual-primary case, like Belgium or Bolivia.
+
+Bolivia (BOL): Guarani kept at primary:0 despite official status - only ~33,000 speakers, too small relative to Bolivia's other co-official majority-native languages (Quechua, Aymara) to count toward the score.
+
+Georgia (GEO): Abkhaz and Russian both kept at primary:0 - Abkhaz's official status applies only to the disputed breakaway region, not Georgian-controlled territory; Russian is a Soviet-era administrative lingua franca without a comparably large genuine native Georgian-Russian population.
+
+Countries whose "total documented languages" figure is approximate (not stated
+outright by the source article): Spain, United Kingdom, Germany, Portugal, Netherlands, Poland, Sweden, Greece, Turkey, Argentina, Canada, Colombia, Peru, Niger, Mali, Ghana, Egypt, Morocco, South Africa, China, Japan, South Korea, Pakistan, Bangladesh, Vietnam, Philippines, Saudi Arabia, Algeria, Tunisia, Senegal, Cote d'Ivoire, Cameroon, Uganda, Tanzania, DR Congo, Zimbabwe, Mozambique, Sudan, Madagascar, Rwanda, Iran, Iraq, Israel, Afghanistan, Nepal, Sri Lanka, Myanmar, Malaysia, Singapore, Kazakhstan, Uzbekistan, Mongolia, Norway, Finland, Denmark, Belgium, Switzerland, Ireland, Romania, Hungary, Georgia, Chile, Venezuela, Ecuador, Bolivia, Paraguay, New Zealand
+
+Totals that vary significantly by source: ETH: Ethnologue 90 vs Glottolog 109. IND: 780 (People's Linguistic Survey) vs 459 (Ethnologue) vs 1369 rationalised mother tongues (2011 Census). PHL: 130-195 depending on classification, Ethnologue 182 native. VNM/SAU: no dedicated article exists; totals derived from ethnic-group counts and named varieties respectively.

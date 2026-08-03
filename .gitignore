@@ -3,3 +3,6 @@
 hf-space/
 .env
 .env.*
+
+# Local Netlify folder
+.netlify

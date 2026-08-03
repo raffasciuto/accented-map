@@ -1,0 +1,83 @@
+iso3,country,total_languages_documented,named_languages,additional_undocumented,primary_web_share_pct,all_listed_share_pct
+AFG,Afghanistan,40,7,33,0.7349,0.7349
+ARG,Argentina,25,8,17,4.6418,4.6418
+AUS,Australia,250,8,242,40.58,40.58
+BEL,Belgium,13,8,5,12.61,12.61
+BGD,Bangladesh,35,8,27,0.11,0.11
+BOL,Bolivia,37,4,33,4.641,4.6418
+BRA,Brazil,238,8,230,2.52,2.52
+CAN,Canada,100,8,92,45.38,45.38
+CHE,Switzerland,37,7,30,13.28,13.28
+CHL,Chile,10,7,3,4.641,4.641
+CHN,China,300,8,292,4.4341,4.4341
+CIV,Cote d'Ivoire,78,8,70,0,4.8
+CMR,Cameroon,250,8,242,0,45.38
+COD,DR Congo,215,5,210,0.0117,4.8117
+COL,Colombia,71,8,63,4.64,4.64
+DEU,Germany,17,8,9,6.52,6.52
+DNK,Denmark,10,4,6,6.5255,6.5255
+DZA,Algeria,18,6,12,0.65,0.65
+ECU,Ecuador,24,7,17,4.6409,4.6409
+EGY,Egypt,13,8,5,0.65,0.65
+ESP,Spain,23,8,15,4.92,4.92
+ETH,Ethiopia,90,8,82,0.0098,0.0098
+FIN,Finland,15,5,10,1.12,1.12
+FRA,France,75,8,67,5.053,5.053
+GBR,United Kingdom,300,8,292,40.597,40.597
+GEO,Georgia,12,6,6,0.141,6.961
+GHA,Ghana,80,8,72,0.0004,40.5804
+GRC,Greece,20,8,12,1.948,1.948
+HUN,Hungary,14,7,7,7.72,7.72
+IDN,Indonesia,718,8,710,1.0929,1.0929
+IND,India,780,8,772,0.4762,41.0562
+IRL,Ireland,8,4,4,40.58,40.5863
+IRN,Iran,85,8,77,1.4184,1.4184
+IRQ,Iraq,8,5,3,0.6904,0.6904
+ISR,Israel,10,3,7,0.9016,0.9016
+ITA,Italy,26,8,18,2.49,2.49
+JPN,Japan,15,8,7,5.32,5.32
+KAZ,Kazakhstan,25,7,18,6.9009,6.9009
+KEN,Kenya,68,8,60,0.0172,40.5972
+KOR,South Korea,3,3,0,0.84,0.84
+LKA,Sri Lanka,7,4,3,0.0584,0.0584
+MAR,Morocco,14,8,6,0.65,5.45
+MDG,Madagascar,11,2,9,0.0034,4.8034
+MEX,Mexico,68,8,60,4.64,4.64
+MLI,Mali,80,8,72,0,4.8
+MMR,Myanmar,117,6,111,0.017,0.017
+MNG,Mongolia,13,5,8,0.063,0.063
+MOZ,Mozambique,43,8,35,0,2.52
+MYS,Malaysia,137,8,129,0.1419,0.1419
+NER,Niger,20,8,12,0.6526,5.4526
+NGA,Nigeria,520,8,512,0.0054,40.5854
+NLD,Netherlands,9,9,0,1.8239,42.4039
+NOR,Norway,12,5,7,0.354,0.354
+NPL,Nepal,124,8,116,0.061,0.061
+NZL,New Zealand,5,3,2,40.58,40.5818
+PAK,Pakistan,80,8,72,0.0147,40.6277
+PER,Peru,44,8,36,4.641,4.641
+PHL,Philippines,181,8,173,0.0114,40.5914
+PNG,Papua New Guinea,840,8,832,0,40.58
+POL,Poland,16,8,8,9.0235,9.0235
+PRT,Portugal,8,8,0,2.52,2.52
+PRY,Paraguay,20,8,12,4.6408,4.6408
+ROU,Romania,15,8,7,9.2475,9.2475
+RUS,Russia,100,8,92,6.8275,6.8275
+RWA,Rwanda,5,4,1,0.0028,45.3945
+SAU,Saudi Arabia,8,8,0,0.65,0.65
+SDN,Sudan,70,8,62,0.65,41.23
+SEN,Senegal,36,8,28,0.0002,4.8002
+SGP,Singapore,20,8,12,45.149,45.149
+SWE,Sweden,200,8,192,1.1216,1.1216
+THA,Thailand,75,8,67,0.37,0.37
+TUN,Tunisia,7,4,3,0.65,0.65
+TUR,Turkey,40,8,32,2.0404,2.0404
+TZA,Tanzania,125,8,117,0.0117,40.5917
+UGA,Uganda,43,8,35,0,40.5917
+UKR,Ukraine,40,8,32,11.6,11.6
+USA,United States,430,8,422,40.5808,45.2208
+UZB,Uzbekistan,15,6,9,6.9107,6.9107
+VEN,Venezuela,40,6,34,4.64,4.64
+VNM,Vietnam,54,8,46,5.872,5.872
+ZAF,South Africa,35,8,27,40.5902,40.5902
+ZWE,Zimbabwe,19,8,11,0,40.58
