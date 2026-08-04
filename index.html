@@ -3578,18 +3578,28 @@
   // windows for per-chunk language detection -- see the comment above startContinuousRecorder's
   // declaration for why this replaced a second live recorder.
   async function sliceIntoWavSegments(blob, segmentSeconds = 4) {
+    let audioCtx;
     try {
       const arrayBuffer = await blob.arrayBuffer();
-      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer.slice(0));
       const segments = [];
       for (let t = 0; t < audioBuffer.duration; t += segmentSeconds) {
         segments.push(audioBufferSliceToWav(audioBuffer, t, t + segmentSeconds));
       }
+      // Was silent before -- this is the one piece of evidence that tells "decode failed /
+      // produced zero segments" apart from "segments were produced fine, but Whisper returned
+      // nothing for them" (logged per-segment below in detectLanguageFromSegments).
+      console.log('Sliced recording into WAV segments:', segments.length, 'sizes:', segments.map(s => s.size), '| source duration (s):', audioBuffer.duration);
       return segments;
     } catch (e) {
       console.log('Could not slice recording for transcription:', e);
       return [];
+    } finally {
+      // Matches the same cleanup analyzeAcousticFeatures already does -- left unclosed before,
+      // which leaks one AudioContext per recording attempt (Safari caps how many can be alive
+      // at once).
+      if (audioCtx) audioCtx.close();
     }
   }
 
@@ -4310,6 +4320,12 @@
         if (txt.trim()) {
           results.push({ language: lang, text: txt, speechSeconds, avgLogprobs, noSpeechProbs });
           console.log('Segmento:', lang, '|', txt);
+        } else {
+          // Was silent before -- this is the other half of the missing evidence: a segment can
+          // reach here (no exception thrown, so it wasn't rejected/never-sent) and still produce
+          // nothing if Whisper itself returned empty text, or if the proxy/Groq response came
+          // back shaped differently than expected (e.g. an error field instead of text/language).
+          console.log('Segment produced no usable text. Raw response:', JSON.stringify(data).slice(0, 500));
         }
       } catch(e) {
         console.log('Segment error:', e);
