@@ -2890,7 +2890,7 @@
   async function analyzeAccent(blob, language) {
     try {
       const form = new FormData();
-      form.append('file', blob, 'recording.webm');
+      form.append('file', blob, `recording.${RECORDER_FILE_EXT}`);
       form.append('language', language || '');
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 15000);
@@ -3197,7 +3197,7 @@
       const uploadBytes = window._uploadBytes;
       const getDownloadURL = window._getDownloadURL;
 
-      const filename = `memos/${Date.now()}.webm`;
+      const filename = `memos/${Date.now()}.${RECORDER_FILE_EXT}`;
       const audioRef = storageRef(storage, filename);
       await uploadBytes(audioRef, blob);
       const audioURL = await getDownloadURL(audioRef);
@@ -3496,14 +3496,26 @@
   let segmentTimer = null;
   const SEGMENT_MS = 4000;
 
-  // Segmented recorder: independent 4s WebM files, used only for per-segment language detection.
+  // Safari (iOS and macOS) doesn't support 'audio/webm', which Chrome/Firefox use by default --
+  // hardcoding it threw a synchronous, uncaught NotSupportedError from inside the record button's
+  // click handler, right after the UI had already flipped to "recording..." (recordOneSegment/
+  // startContinuousRecorder run after those UI updates), so it looked like recording worked while
+  // no MediaRecorder was ever actually created -- the pipeline then hung on "analysing" forever,
+  // since finalizeRecording() is only ever reached via a real recorder's onstop event. Feature-
+  // detected once and reused for every MediaRecorder/Blob/filename in this file.
+  const RECORDER_MIME_TYPE = ['audio/webm', 'audio/webm;codecs=opus', 'audio/mp4', 'audio/mp4;codecs=mp4a.40.2', 'audio/aac']
+    .find(t => window.MediaRecorder && MediaRecorder.isTypeSupported(t)) || '';
+  const RECORDER_FILE_EXT = RECORDER_MIME_TYPE.includes('mp4') ? 'mp4' : RECORDER_MIME_TYPE.includes('aac') ? 'aac' : 'webm';
+  const recorderOptions = RECORDER_MIME_TYPE ? { mimeType: RECORDER_MIME_TYPE } : undefined;
+
+  // Segmented recorder: independent 4s files, used only for per-segment language detection.
   function recordOneSegment() {
     if (!recording || !mediaStream) return;
-    currentRecorder = new MediaRecorder(mediaStream, { mimeType: 'audio/webm' });
+    currentRecorder = new MediaRecorder(mediaStream, recorderOptions);
     let segChunks = [];
     currentRecorder.ondataavailable = e => segChunks.push(e.data);
     currentRecorder.onstop = () => {
-      const segBlob = new Blob(segChunks, { type: 'audio/webm' });
+      const segBlob = new Blob(segChunks, { type: RECORDER_MIME_TYPE || 'audio/webm' });
       if (segBlob.size > 500) segmentBlobs.push(segBlob);
       if (recording) {
         recordOneSegment();
@@ -3528,7 +3540,7 @@
 
   function startContinuousRecorder() {
     continuousChunks = [];
-    continuousRecorder = new MediaRecorder(mediaStream, { mimeType: 'audio/webm' });
+    continuousRecorder = new MediaRecorder(mediaStream, recorderOptions);
     continuousRecorder.ondataavailable = e => { if (e.data.size > 0) continuousChunks.push(e.data); };
     continuousRecorder.start();
     continuousStartTime = performance.now();
@@ -3537,10 +3549,10 @@
   function stopContinuousRecorder() {
     return new Promise(resolve => {
       if (!continuousRecorder || continuousRecorder.state === 'inactive') {
-        resolve(new Blob(continuousChunks, { type: 'audio/webm' }));
+        resolve(new Blob(continuousChunks, { type: RECORDER_MIME_TYPE || 'audio/webm' }));
         return;
       }
-      continuousRecorder.onstop = () => resolve(new Blob(continuousChunks, { type: 'audio/webm' }));
+      continuousRecorder.onstop = () => resolve(new Blob(continuousChunks, { type: RECORDER_MIME_TYPE || 'audio/webm' }));
       continuousRecorder.stop();
     });
   }
@@ -3569,7 +3581,12 @@
       window._locationPromise = new Promise((resolve) => {
         navigator.geolocation.getCurrentPosition(
           (pos) => resolve([pos.coords.longitude, pos.coords.latitude]),
-          () => resolve([13.405, 52.52]),
+          (err) => {
+            // Was silent before -- logged now since the only way to tell "permission denied"
+            // apart from "timed out" apart from "position unavailable" was to guess.
+            console.warn('Geolocation failed, falling back to default location. Code:', err.code, '| Message:', err.message);
+            resolve([13.405, 52.52]);
+          },
           { timeout: 20000 }
         );
       });
@@ -4235,7 +4252,7 @@
         const audioBase64 = await blobToBase64(segBlob);
         const data = await callGroqProxy('transcriptions', {
           audioBase64,
-          filename: 'segment.webm',
+          filename: `segment.${RECORDER_FILE_EXT}`,
           model: 'whisper-large-v3',
           response_format: 'verbose_json'
         });
