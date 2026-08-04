@@ -1399,7 +1399,7 @@
 </div>
 
 <div id="location-pick-notice">
-  <span class="location-pick-main">Tap the map to place your hot take.</span>
+  <span class="location-pick-main">Recording — tap the map to drop a pin where you are.</span>
   <span class="location-pick-sub" id="location-pick-sub"></span>
   <button id="location-pick-skip">skip — use default spot</button>
 </div>
@@ -3087,6 +3087,27 @@
   const locationPickNotice = document.getElementById('location-pick-notice');
   const locationPickSub = document.getElementById('location-pick-sub');
   const locationPickSkipBtn = document.getElementById('location-pick-skip');
+  // Keyless, CORS-open (access-control-allow-origin: *), HTTPS -- no server proxy needed. Used
+  // only as the "default spot" option below, so any failure here (network error, timeout,
+  // malformed response) just means that option falls back to the old hardcoded Berlin point --
+  // never a hang, never a broken skip button.
+  async function fetchApproximateLocation() {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 4000);
+      const res = await fetch('https://ipwho.is/', { signal: controller.signal });
+      clearTimeout(timeoutId);
+      const data = await res.json();
+      if (data && typeof data.longitude === 'number' && typeof data.latitude === 'number') {
+        console.log('Approximate IP-based location found:', data.city, data.country);
+        return [data.longitude, data.latitude];
+      }
+    } catch (e) {
+      console.warn('Approximate IP-based location failed, "default spot" will use Berlin:', e);
+    }
+    return null;
+  }
+
   function enterLocationPickMode(resolveLocation, errCode) {
     pickingLocation = true;
     locationPickSub.textContent = errCode === 1 ? 'Location access was denied.'
@@ -3095,7 +3116,14 @@
     locationPickNotice.classList.add('visible');
     map.getCanvas().style.cursor = 'crosshair';
 
+    // Kicked off immediately so it has the most possible time to resolve before anyone actually
+    // clicks skip -- most users will take at least a few seconds to read the banner and decide.
+    const approxLocationPromise = fetchApproximateLocation();
+
+    let settled = false;
     const finish = (loc) => {
+      if (settled) return;
+      settled = true;
       pickingLocation = false;
       locationPickNotice.classList.remove('visible');
       map.getCanvas().style.cursor = '';
@@ -3104,7 +3132,10 @@
       resolveLocation(loc);
     };
     const onMapClick = (e) => finish([e.lngLat.lng, e.lngLat.lat]);
-    const onSkip = () => finish([13.405, 52.52]);
+    const onSkip = async () => {
+      const approx = await approxLocationPromise;
+      finish(approx || [13.405, 52.52]);
+    };
 
     map.once('click', onMapClick);
     locationPickSkipBtn.addEventListener('click', onSkip);
