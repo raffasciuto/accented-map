@@ -3061,6 +3061,40 @@
     return classification;
   }
 
+  // Publish-time safety gate — spicy/unpopular opinions are the whole point of this app, but
+  // hate speech targeting a protected characteristic isn't. Separate bipolar calls per category
+  // (same shape as classifyOneSpectrum/CLASSIFICATION_SPECTRUMS above) rather than one crammed
+  // label, since zero-shot NLI reads a crisp, specific hypothesis more reliably than a vague
+  // combined one. Reuses the same already-allowlisted multilingual model rather than a dedicated
+  // toxicity model — this app transcribes/analyzes recordings in whatever language someone spoke,
+  // and a dedicated toxicity model would only reliably cover a handful of languages.
+  const HATE_SPEECH_CATEGORIES = [
+    ["hate speech targeting someone's race or ethnicity", 'not about race or ethnicity'],
+    ['xenophobic hate speech targeting immigrants or a nationality', 'not xenophobic'],
+    ['homophobic or transphobic hate speech', 'not homophobic or transphobic'],
+    ["hate speech targeting someone's religion or disability", 'not about religion or disability'],
+  ];
+  // Starting point, not a validated number -- real submissions after this ships are the only way
+  // to tell if this is over- or under-flagging real spicy-but-not-hateful opinions.
+  const HATE_SPEECH_THRESHOLD = 0.65;
+
+  async function checkHateSpeech(text) {
+    const results = await Promise.all(
+      HATE_SPEECH_CATEGORIES.map(poles => classifyOneSpectrum(text, poles))
+    );
+    for (let i = 0; i < results.length; i++) {
+      const r = results[i];
+      const hatefulLabel = HATE_SPEECH_CATEGORIES[i][0];
+      const score = r ? r[hatefulLabel] : null;
+      if (typeof score === 'number' && score >= HATE_SPEECH_THRESHOLD) {
+        // Category name only ever logged for tuning -- never shown to end users.
+        console.log('Hate speech check flagged category:', hatefulLabel, '| score:', score);
+        return { flagged: true, matchedCategory: hatefulLabel };
+      }
+    }
+    return { flagged: false, matchedCategory: null };
+  }
+
   // Real multilingual sentence embedding — not shown in any UI, only used by the AI Archive to
   // compute cosine similarity between memos. Never blocks publishing if the call fails.
   async function getEmbedding(text) {
@@ -3930,17 +3964,18 @@
       mountMemoCanvas(popup, audioURL, language);
 
       recordLabel.textContent = '🎙️ measuring accent + content...';
-      // Four independent real signals — run concurrently instead of back to back. Each of these
+      // Five independent real signals — run concurrently instead of back to back. Each of these
       // already defends itself against failure/timeout (returns null rather than throwing), so a
-      // slow/unreachable HF Space or Inference API never blocks the other three or publishing.
-      // The three model-based calls are skipped entirely when no real speech was detected —
+      // slow/unreachable HF Space or Inference API never blocks the others or publishing.
+      // The four model-based calls are skipped entirely when no real speech was detected —
       // acousticFeatures still runs regardless, since it's local/free and still wanted for the
       // dot-grid pattern (a silent clip just ends up with a near-zero energy envelope, honestly).
-      const [accentAnalysis, acousticFeatures, classification, embedding] = await Promise.all([
+      const [accentAnalysis, acousticFeatures, classification, embedding, hateSpeechCheck] = await Promise.all([
         noSpeechDetected ? Promise.resolve(null) : analyzeAccent(blob, language),
         analyzeAcousticFeatures(blob),
         noSpeechDetected ? Promise.resolve(null) : classifySpectrums(text),
-        noSpeechDetected ? Promise.resolve(null) : getEmbedding(text)
+        noSpeechDetected ? Promise.resolve(null) : getEmbedding(text),
+        noSpeechDetected ? Promise.resolve(null) : checkHateSpeech(text)
       ]);
       console.log('Accent:', accentAnalysis, '| Classification:', classification, '| Acoustic:', acousticFeatures);
 
@@ -3952,11 +3987,16 @@
 
       Object.assign(session, {
         language, languageMix, classification, embedding, accentAnalysis, accentConfidencePct,
-        text, segmentLanguages, whisperConfidence, acousticFeatures
+        text, segmentLanguages, whisperConfidence, acousticFeatures, hateSpeechCheck
       });
       session.status = 'ready';
 
-      popup.setHTML(popupHTML({ audioURL, language, languageMix, classification, accentAnalysis, accentConfidencePct, extraContent: publishPanelHTML(generateRandomUsername(), sessionId) }));
+      // Flagged content never gets a Publish path at all -- not a dismissible warning next to a
+      // still-clickable button, since this isn't a "try again" situation the way a failed save is.
+      const extraContent = hateSpeechCheck && hateSpeechCheck.flagged
+        ? moderationBlockedHTML(sessionId)
+        : publishPanelHTML(generateRandomUsername(), sessionId);
+      popup.setHTML(popupHTML({ audioURL, language, languageMix, classification, accentAnalysis, accentConfidencePct, extraContent }));
       mountMemoCanvas(popup, audioURL, language);
       resetRecordLabel();
 
@@ -3975,7 +4015,11 @@
 
   function publishMemo(sessionId) {
     const session = memoSessions[sessionId];
-    if (!session || session.status === 'publishing' || session.status === 'published') return;
+    // Defense in depth -- moderationBlockedHTML never renders a Publish button for a flagged
+    // session, but this guard means flagged content still can't reach saveToFirebase even if
+    // this were somehow called directly.
+    if (!session || session.status === 'publishing' || session.status === 'published'
+      || (session.hateSpeechCheck && session.hateSpeechCheck.flagged)) return;
     session.status = 'publishing';
 
     const input = document.getElementById('username-input-' + sessionId);
@@ -4485,6 +4529,19 @@
         <div class="memo-publish-caption">Add your hot take to the map?</div>
         <div class="memo-publish-actions">
           <button onclick="publishMemo('${sessionId}')" class="memo-publish-btn">Publish 🌍</button>
+          <button onclick="deleteMemo('${sessionId}')" class="memo-publish-btn memo-publish-btn--ghost">Delete</button>
+        </div>
+      </div>`;
+  }
+
+  // No username input, no Publish button at all -- unlike publishPanelHTML's errorMessage (a
+  // recoverable "try again" state next to a still-clickable Publish button), a moderation flag
+  // isn't something retrying fixes, so there's deliberately no path to publishing from here.
+  function moderationBlockedHTML(sessionId) {
+    return `
+      <div class="memo-publish-card memo-glass">
+        <div class="memo-publish-error">⚠ This recording can't be published — it may contain hate speech or discriminatory content.</div>
+        <div class="memo-publish-actions">
           <button onclick="deleteMemo('${sessionId}')" class="memo-publish-btn memo-publish-btn--ghost">Delete</button>
         </div>
       </div>`;
