@@ -3108,6 +3108,21 @@
     return null;
   }
 
+  // Same marker construction already used for the current recording session's own dot (see
+  // runPipeline below) and the onboarding tour's spotlight dot -- reused here verbatim so the
+  // "your pin landed here" cue matches the existing design language exactly, without touching the
+  // real .memo-dots layer that renders every published memo.
+  function dropTemporaryLocationPin(lngLat) {
+    const wrap = document.createElement('div');
+    wrap.className = 'memo-dot-wrap';
+    wrap.style.width = '13px'; wrap.style.height = '13px';
+    const dotEl = document.createElement('div');
+    dotEl.className = 'memo-dot fresh';
+    wrap.appendChild(dotEl);
+    const marker = new mapboxgl.Marker(wrap).setLngLat(lngLat).addTo(map);
+    setTimeout(() => marker.remove(), 5000);
+  }
+
   function enterLocationPickMode(resolveLocation, errCode) {
     pickingLocation = true;
     locationPickSub.textContent = errCode === 1 ? 'Location access was denied.'
@@ -3129,6 +3144,7 @@
       map.getCanvas().style.cursor = '';
       map.off('click', onMapClick);
       locationPickSkipBtn.removeEventListener('click', onSkip);
+      dropTemporaryLocationPin(loc);
       resolveLocation(loc);
     };
     const onMapClick = (e) => finish([e.lngLat.lng, e.lngLat.lat]);
@@ -3709,41 +3725,55 @@
     // Sliced from rawBlob (pre-duration-patch) -- decoding doesn't need that WebM-specific patch,
     // and rawBlob is already the exact same audio data either way.
     const segmentBlobs = await sliceIntoWavSegments(rawBlob);
-    const loc = await window._locationPromise;
-    userLocation = loc;
     await runPipeline(fullBlob, userLocation, segmentBlobs);
   }
 
   btn.addEventListener('click', async () => {
     if (!recording) {
-      // This isn't racing anything time-critical — finalizeRecording() doesn't await this promise
-      // until the user actually stops recording, which is virtually always well past 5 seconds
-      // later. A short timeout here only makes it more likely mobile GPS (routinely slower than a
-      // desktop's WiFi-based positioning, especially on a cold fix or indoors) gets cut off before
-      // it ever resolves, silently mislocating the memo to the Berlin fallback with no indication
-      // to the user that their real location wasn't used. 20s gives it real room to succeed.
-      window._locationPromise = new Promise((resolve) => {
-        navigator.geolocation.getCurrentPosition(
-          (pos) => resolve([pos.coords.longitude, pos.coords.latitude]),
-          (err) => {
-            // Was silent before -- logged now since the only way to tell "permission denied"
-            // apart from "timed out" apart from "position unavailable" was to guess.
-            console.warn('Geolocation failed, entering manual pin-placement mode. Code:', err.code, '| Message:', err.message);
-            enterLocationPickMode(resolve, err.code);
-          },
-          { timeout: 20000 }
-        );
-      });
-      window._locationPromise.then(loc => {
-        userLocation = loc;
-        map.flyTo({ center: loc, zoom: 13, pitch: 55, duration: 2500 });
-      });
+      // Recording doesn't start until location is fully resolved and the camera has actually
+      // landed there -- otherwise the mic captures dead air while the user is still busy placing
+      // a pin, and a flyTo racing against active recording is easy to miss entirely. Disabling the
+      // button (rather than a separate flag) both blocks double-clicks and makes the wait visible
+      // via the existing button.about-menu-record:disabled style.
+      btn.disabled = true;
+      recordLabel.textContent = 'locating...';
+      try {
+        // Independent asks -- no reason to serialize the mic-permission prompt behind location.
+        const mediaStreamPromise = navigator.mediaDevices.getUserMedia({ audio: true });
 
-      mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      recording = true;
-      btn.classList.add('recording');
-      recordLabel.textContent = 'recording...';
-      startContinuousRecorder();
+        const locationPromise = new Promise((resolve) => {
+          navigator.geolocation.getCurrentPosition(
+            (pos) => resolve([pos.coords.longitude, pos.coords.latitude]),
+            (err) => {
+              // Was silent before -- logged now since the only way to tell "permission denied"
+              // apart from "timed out" apart from "position unavailable" was to guess.
+              console.warn('Geolocation failed, entering manual pin-placement mode. Code:', err.code, '| Message:', err.message);
+              enterLocationPickMode(resolve, err.code);
+            },
+            { timeout: 20000 }
+          );
+        });
+
+        userLocation = await locationPromise;
+        // Waiting for moveend (rather than firing flyTo and moving on) is what makes this
+        // genuinely visible -- the camera settling on the pin is the confirmation, seen before
+        // anything else starts competing for attention.
+        await new Promise((resolve) => {
+          map.flyTo({ center: userLocation, zoom: 13, pitch: 55, duration: 2500 });
+          map.once('moveend', resolve);
+        });
+
+        mediaStream = await mediaStreamPromise;
+        recording = true;
+        btn.classList.add('recording');
+        recordLabel.textContent = 'recording...';
+        startContinuousRecorder();
+      } catch (e) {
+        console.warn('Could not start recording:', e);
+        recordLabel.textContent = '';
+      } finally {
+        btn.disabled = false;
+      }
 
     } else {
       recording = false;
