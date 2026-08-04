@@ -3485,55 +3485,32 @@
     });
   }
 
-  /* ====================== RECORD (segmentos para idioma + grabación continua para reproducción) ====================== */
+  /* ====================== RECORD (grabación continua, segmentada en post-proceso para idioma) ====================== */
   const btn    = document.getElementById('record-btn');
   const recordLabel = document.getElementById('record-label');
   let recording = false;
   let userLocation = [13.405, 52.52];
   let mediaStream = null;
-  let currentRecorder = null;
-  let segmentBlobs = [];
-  let segmentTimer = null;
-  const SEGMENT_MS = 4000;
 
   // Safari (iOS and macOS) doesn't support 'audio/webm', which Chrome/Firefox use by default --
   // hardcoding it threw a synchronous, uncaught NotSupportedError from inside the record button's
-  // click handler, right after the UI had already flipped to "recording..." (recordOneSegment/
-  // startContinuousRecorder run after those UI updates), so it looked like recording worked while
-  // no MediaRecorder was ever actually created -- the pipeline then hung on "analysing" forever,
-  // since finalizeRecording() is only ever reached via a real recorder's onstop event. Feature-
-  // detected once and reused for every MediaRecorder/Blob/filename in this file.
+  // click handler, right after the UI had already flipped to "recording..." (startContinuousRecorder
+  // runs after those UI updates), so it looked like recording worked while no MediaRecorder was
+  // ever actually created. Feature-detected once and reused for every MediaRecorder/Blob/filename
+  // in this file.
   const RECORDER_MIME_TYPE = ['audio/webm', 'audio/webm;codecs=opus', 'audio/mp4', 'audio/mp4;codecs=mp4a.40.2', 'audio/aac']
     .find(t => window.MediaRecorder && MediaRecorder.isTypeSupported(t)) || '';
   const RECORDER_FILE_EXT = RECORDER_MIME_TYPE.includes('mp4') ? 'mp4' : RECORDER_MIME_TYPE.includes('aac') ? 'aac' : 'webm';
   const recorderOptions = RECORDER_MIME_TYPE ? { mimeType: RECORDER_MIME_TYPE } : undefined;
 
-  // Segmented recorder: independent 4s files, used only for per-segment language detection.
-  function recordOneSegment() {
-    if (!recording || !mediaStream) return;
-    currentRecorder = new MediaRecorder(mediaStream, recorderOptions);
-    let segChunks = [];
-    currentRecorder.ondataavailable = e => segChunks.push(e.data);
-    currentRecorder.onstop = () => {
-      const segBlob = new Blob(segChunks, { type: RECORDER_MIME_TYPE || 'audio/webm' });
-      if (segBlob.size > 500) segmentBlobs.push(segBlob);
-      if (recording) {
-        recordOneSegment();
-      } else {
-        finalizeRecording();
-      }
-    };
-    currentRecorder.start();
-    segmentTimer = setTimeout(() => {
-      if (currentRecorder && currentRecorder.state === 'recording') {
-        currentRecorder.stop();
-      }
-    }, SEGMENT_MS);
-  }
-
-  // Continuous recorder: one uninterrupted encoding session, used for full-length playback.
-  // (Stitching independent segment files back-to-back produces an invalid file after the first
-  // segment's header — this second recorder is what keeps full playback intact.)
+  // Continuous recorder: one uninterrupted encoding session, used for both full-length playback
+  // and (post-recording, see sliceIntoWavSegments below) per-chunk language detection. There used
+  // to be a second, independently-restarted recorder just for the latter -- two concurrent
+  // MediaRecorder instances on the same stream, one of them torn down and recreated every ~4s,
+  // turned out to be exactly the kind of pattern Safari doesn't handle reliably: it was silently
+  // producing empty/unusable segments there while this one worked fine, which is how a real
+  // recording ended up transcribing as nothing. One recorder, sliced afterward, sidesteps that
+  // whole class of failure.
   let continuousRecorder = null;
   let continuousChunks = [];
   let continuousStartTime = 0;
@@ -3557,6 +3534,65 @@
     });
   }
 
+  // Encodes a slice of a decoded AudioBuffer as a standalone 16-bit PCM WAV Blob. WAV needs no
+  // container-finalization step -- just this fixed 44-byte header plus raw samples -- so unlike
+  // MediaRecorder output there's no equivalent way for a slice to come out empty/invalid.
+  function audioBufferSliceToWav(audioBuffer, startSec, endSec) {
+    const sampleRate = audioBuffer.sampleRate;
+    const startSample = Math.max(0, Math.floor(startSec * sampleRate));
+    const endSample = Math.min(audioBuffer.length, Math.ceil(endSec * sampleRate));
+    const numSamples = Math.max(0, endSample - startSample);
+    const channelData = audioBuffer.getChannelData(0);
+
+    const bytesPerSample = 2; // 16-bit PCM
+    const dataSize = numSamples * bytesPerSample;
+    const buffer = new ArrayBuffer(44 + dataSize);
+    const view = new DataView(buffer);
+
+    const writeString = (offset, str) => { for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i)); };
+    writeString(0, 'RIFF');
+    view.setUint32(4, 36 + dataSize, true);
+    writeString(8, 'WAVE');
+    writeString(12, 'fmt ');
+    view.setUint32(16, 16, true);       // fmt chunk size
+    view.setUint16(20, 1, true);        // PCM format
+    view.setUint16(22, 1, true);        // mono
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * bytesPerSample, true); // byte rate
+    view.setUint16(32, bytesPerSample, true);              // block align
+    view.setUint16(34, 16, true);       // bits per sample
+    writeString(36, 'data');
+    view.setUint32(40, dataSize, true);
+
+    let offset = 44;
+    for (let i = startSample; i < endSample; i++) {
+      const s = Math.max(-1, Math.min(1, channelData[i]));
+      view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7fff, true);
+      offset += 2;
+    }
+    return new Blob([buffer], { type: 'audio/wav' });
+  }
+
+  // Decodes the continuous recording once (the same AudioContext.decodeAudioData call
+  // analyzeAcousticFeatures already uses successfully) and slices it into ~segmentSeconds WAV
+  // windows for per-chunk language detection -- see the comment above startContinuousRecorder's
+  // declaration for why this replaced a second live recorder.
+  async function sliceIntoWavSegments(blob, segmentSeconds = 4) {
+    try {
+      const arrayBuffer = await blob.arrayBuffer();
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer.slice(0));
+      const segments = [];
+      for (let t = 0; t < audioBuffer.duration; t += segmentSeconds) {
+        segments.push(audioBufferSliceToWav(audioBuffer, t, t + segmentSeconds));
+      }
+      return segments;
+    } catch (e) {
+      console.log('Could not slice recording for transcription:', e);
+      return [];
+    }
+  }
+
   async function finalizeRecording() {
     const rawBlob = await stopContinuousRecorder();
     const durationMs = performance.now() - continuousStartTime;
@@ -3565,6 +3601,9 @@
     // silently returns the original blob on any parsing failure, so this can't make things worse.
     const fullBlob = window.ysFixWebmDuration ? await window.ysFixWebmDuration(rawBlob, durationMs) : rawBlob;
     mediaStream.getTracks().forEach(t => t.stop());
+    // Sliced from rawBlob (pre-duration-patch) -- decoding doesn't need that WebM-specific patch,
+    // and rawBlob is already the exact same audio data either way.
+    const segmentBlobs = await sliceIntoWavSegments(rawBlob);
     const loc = await window._locationPromise;
     userLocation = loc;
     await runPipeline(fullBlob, userLocation, segmentBlobs);
@@ -3596,21 +3635,20 @@
       });
 
       mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      segmentBlobs = [];
       recording = true;
       btn.classList.add('recording');
       recordLabel.textContent = 'recording...';
       startContinuousRecorder();
-      recordOneSegment();
 
     } else {
       recording = false;
-      clearTimeout(segmentTimer);
-      if (currentRecorder && currentRecorder.state === 'recording') {
-        currentRecorder.stop();
-      }
       btn.classList.remove('recording');
       recordLabel.textContent = 'analyzing...';
+      // Used to happen indirectly, via the segmented recorder's onstop handler noticing
+      // `recording` had gone false. With that recorder removed, this is the only remaining
+      // trigger for finalizing -- stopContinuousRecorder() (called from within this) stops the
+      // one recorder that's left and resolves with its blob.
+      finalizeRecording();
     }
   });
 
@@ -4247,12 +4285,15 @@
     const results = [];
 
     for (const segBlob of segmentBlobs) {
-      if (segBlob.size < 1000) continue;
+      // No more size-based skip here: these are always freshly-encoded, fixed-size-per-duration
+      // WAV slices (raw PCM, not variable-length compressed audio), so a small blob.size no
+      // longer means "probably empty/silent" the way it did for the old compressed segments --
+      // Whisper's own no_speech_prob (used below) is the correct signal for that now.
       try {
         const audioBase64 = await blobToBase64(segBlob);
         const data = await callGroqProxy('transcriptions', {
           audioBase64,
-          filename: `segment.${RECORDER_FILE_EXT}`,
+          filename: 'segment.wav',
           model: 'whisper-large-v3',
           response_format: 'verbose_json'
         });
