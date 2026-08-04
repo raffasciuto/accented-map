@@ -792,6 +792,30 @@
     }
     #map-context-lost-reload:hover { background: rgba(201,37,5,0.25); }
 
+    /* Shown when getCurrentPosition fails (denied, unavailable, or timed out) so the memo doesn't
+       just silently land at the Berlin fallback -- the user picks their own spot instead. Same
+       visual language as #map-context-lost-notice, just multi-line for the extra sub-text/skip
+       link. */
+    #location-pick-notice {
+      position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-12px);
+      z-index: 95;
+      display: flex; flex-direction: column; align-items: center; gap: 6px;
+      padding: 12px 20px; border-radius: 20px;
+      background: rgba(10,9,9,0.92); border: 1px solid rgba(255,255,255,0.14);
+      font-family: 'DM Mono', 'SFMono-Regular', Menlo, monospace; color: #e8e6df;
+      text-align: center;
+      opacity: 0; pointer-events: none;
+      transition: opacity .3s ease, transform .3s ease;
+    }
+    #location-pick-notice.visible { opacity: 1; pointer-events: auto; transform: translateX(-50%) translateY(0); }
+    #location-pick-notice .location-pick-main { font-size: 12.5px; }
+    #location-pick-notice .location-pick-sub { font-size: 11px; color: rgba(232,230,223,0.6); }
+    #location-pick-skip {
+      margin-top: 2px; padding: 0; border: none; background: none;
+      color: rgba(232,230,223,0.75); font-family: inherit; font-size: 11px;
+      text-decoration: underline; text-underline-offset: 2px; cursor: pointer;
+    }
+
     #about-view { font-family: 'DM Mono', 'SFMono-Regular', Menlo, monospace; background: #181818; padding: 0; text-align: left; overflow-y: auto; }
 
     .about-menu {
@@ -1372,6 +1396,12 @@
 <div id="map-context-lost-notice">
   <span>Map lost its display connection.</span>
   <button id="map-context-lost-reload">Reload</button>
+</div>
+
+<div id="location-pick-notice">
+  <span class="location-pick-main">Tap the map to place your hot take.</span>
+  <span class="location-pick-sub" id="location-pick-sub"></span>
+  <button id="location-pick-skip">skip — use default spot</button>
 </div>
 
 <!-- MAP -->
@@ -3049,6 +3079,37 @@
   }, false);
   document.getElementById('map-context-lost-reload').addEventListener('click', () => location.reload());
 
+  // Manual location fallback: when getCurrentPosition fails (denied, unavailable, or timed out),
+  // the map goes into "place your pin" mode instead of silently defaulting to Berlin -- a lazy
+  // user still ends up somewhere, but only via a real, visible choice they made (tap the map, or
+  // explicitly skip), never a fallback they never knew was happening.
+  let pickingLocation = false;
+  const locationPickNotice = document.getElementById('location-pick-notice');
+  const locationPickSub = document.getElementById('location-pick-sub');
+  const locationPickSkipBtn = document.getElementById('location-pick-skip');
+  function enterLocationPickMode(resolveLocation, errCode) {
+    pickingLocation = true;
+    locationPickSub.textContent = errCode === 1 ? 'Location access was denied.'
+      : errCode === 3 ? "Couldn't get a location in time."
+      : 'Location unavailable.';
+    locationPickNotice.classList.add('visible');
+    map.getCanvas().style.cursor = 'crosshair';
+
+    const finish = (loc) => {
+      pickingLocation = false;
+      locationPickNotice.classList.remove('visible');
+      map.getCanvas().style.cursor = '';
+      map.off('click', onMapClick);
+      locationPickSkipBtn.removeEventListener('click', onSkip);
+      resolveLocation(loc);
+    };
+    const onMapClick = (e) => finish([e.lngLat.lng, e.lngLat.lat]);
+    const onSkip = () => finish([13.405, 52.52]);
+
+    map.once('click', onMapClick);
+    locationPickSkipBtn.addEventListener('click', onSkip);
+  }
+
   map.on('style.load', () => {
     map.setFog({
       color: 'rgb(18,18,18)',
@@ -3175,6 +3236,9 @@
     map.on('mouseenter', 'memo-dots', () => { map.getCanvas().style.cursor = 'pointer'; });
     map.on('mouseleave', 'memo-dots', () => { map.getCanvas().style.cursor = ''; });
     map.on('click', 'memo-dots', (e) => {
+      // While picking a manual location, a tap on an existing dot should resolve the location
+      // (same as tapping empty map), not open that memo's popup too.
+      if (pickingLocation) return;
       if (e.features && e.features[0]) openMemoPopup(e.features[0], e.features[0].geometry.coordinates);
     });
   });
@@ -3633,8 +3697,8 @@
           (err) => {
             // Was silent before -- logged now since the only way to tell "permission denied"
             // apart from "timed out" apart from "position unavailable" was to guess.
-            console.warn('Geolocation failed, falling back to default location. Code:', err.code, '| Message:', err.message);
-            resolve([13.405, 52.52]);
+            console.warn('Geolocation failed, entering manual pin-placement mode. Code:', err.code, '| Message:', err.message);
+            enterLocationPickMode(resolve, err.code);
           },
           { timeout: 20000 }
         );
