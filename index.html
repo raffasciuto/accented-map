@@ -2477,13 +2477,14 @@
       if (!W || !H) return;
       // Scroll progress of the story section within #about-view — the real scroll container
       // here, since html/body are overflow:hidden and window.scrollY never moves.
-      // The extra -H*0.15 is a deliberate buffer: without it, p reaches 1 (the last reveal fully
+      // The extra -H is a deliberate buffer: without it, p reaches 1 (the last reveal fully
       // settled) at the *exact* scroll position where .about-story-stage's own position:sticky
-      // runs out of room and starts exiting -- on mobile that meant any ordinary scroll (or the
-      // slightest momentum overshoot) landed with the stage already sliding up mid-exit, pulling
-      // the last reveal's card up into the fixed nav pill. This makes the stage still fully stuck
-      // for a stretch of real scroll distance after the last reveal settles.
-      const travel = storyEl.offsetHeight - H - H * 0.15;
+      // runs out of room and starts exiting -- on mobile that meant any ordinary scroll landed
+      // with the stage already sliding up mid-exit, pulling the last reveal's card up into the
+      // fixed nav pill. A smaller buffer (H*0.15) wasn't enough against real touch-momentum
+      // scrolling, which can easily carry several hundred px past where a flick was meant to
+      // stop -- a full extra viewport-height of stuck scroll room comfortably absorbs that.
+      const travel = storyEl.offsetHeight - H - H;
       const raw = travel > 0 ? (aboutViewEl.scrollTop - storyEl.offsetTop) / travel : 0;
       const p = Math.max(0, Math.min(1, raw));
 
