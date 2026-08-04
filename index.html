@@ -604,6 +604,10 @@
       transition: background .15s ease, transform .15s ease;
     }
     .memo-play-btn:hover { background: #C92505; transform: scale(1.08); }
+    /* Driven by real playback state (see wireMemoPlayback), not just :hover -- mobile Safari
+       "sticks" :hover on whatever was last tapped since touch has no real mouse-leave, which left
+       this stuck orange after playback actually stopped. */
+    .memo-play-btn.playing { background: #C92505; }
     .memo-loading { font-size: 11px; color: #8a8880; margin-top: 8px; }
 
     .memo-side-tabs { position: absolute; top: 16px; right: 4px; display: flex; flex-direction: column; gap: 8px; z-index: 2; }
@@ -906,8 +910,12 @@
     button.about-menu-record { cursor: pointer; }
     button.about-menu-record:hover { color: #cfcdc6; }
     button.about-menu-record:disabled { opacity: .4; cursor: not-allowed; pointer-events: none; }
+    /* Locating is still "disabled" (blocks double-clicks) but shouldn't wash out the busy pulse
+       below as much as a plain disabled state does. */
+    button.about-menu-record:disabled.busy { opacity: .7; }
     .about-menu-record.recording { color: #C92505; }
-    .about-menu-record.recording .about-menu-record-dot {
+    .about-menu-record.recording .about-menu-record-dot,
+    .about-menu-record.busy .about-menu-record-dot {
       opacity: 1;
       animation: record-dot-pulse 1.1s ease-in-out infinite;
     }
@@ -1867,9 +1875,15 @@
   // live state each time, rather than a blind add/remove per trigger, so one trigger's teardown
   // can't incorrectly collapse the menu while another reason is still active (e.g. the tour ending
   // while the filter panel also happens to be open).
+  // Recording happens hands-free -- without this, the menu's own idle-collapse (see
+  // scheduleMenuIdleCollapse below) hides the record button and its "locating.../recording.../
+  // analyzing..." status mid-flow the moment the user stops touching the screen, which is the
+  // entire point of recording. Set true at record-click, false once resetRecordLabel() fires (the
+  // one function already called at every point the flow is genuinely finished).
+  let recordFlowBusy = false;
   function refreshMenuForceExpanded() {
     const filterOpen = document.getElementById('archive-filter-panel').classList.contains('open');
-    appMenu.classList.toggle('force-expanded', filterOpen || tourStepIndex >= 0);
+    appMenu.classList.toggle('force-expanded', filterOpen || tourStepIndex >= 0 || recordFlowBusy);
   }
   // tapped-open has no natural "pointer left" signal the way :hover does, so it needs its own
   // idle timeout to satisfy "collapses again when not being used" — scoped to tapped-open only;
@@ -1912,6 +1926,9 @@
   // is fine since those are short-lived and don't need a mobile-specific short form.
   function resetRecordLabel() {
     recordLabel.innerHTML = '<span class="nav-label-full">share your hot take</span><span class="nav-label-short">Record</span>';
+    recordFlowBusy = false;
+    btn.classList.remove('busy');
+    refreshMenuForceExpanded();
   }
 
   // Menu lives at a fixed top on the About page and a fixed bottom everywhere else; animating
@@ -3112,6 +3129,10 @@
   // runPipeline below) and the onboarding tour's spotlight dot -- reused here verbatim so the
   // "your pin landed here" cue matches the existing design language exactly, without touching the
   // real .memo-dots layer that renders every published memo.
+  // Not self-removing on a timer -- runPipeline's own marker (created once recording+analysis
+  // finish) removes this one right before placing itself at the same spot, so the pin stays
+  // visible continuously with no gap/flicker between "you placed it" and "it's now the real one".
+  let pendingLocationMarker = null;
   function dropTemporaryLocationPin(lngLat) {
     const wrap = document.createElement('div');
     wrap.className = 'memo-dot-wrap';
@@ -3119,8 +3140,7 @@
     const dotEl = document.createElement('div');
     dotEl.className = 'memo-dot fresh';
     wrap.appendChild(dotEl);
-    const marker = new mapboxgl.Marker(wrap).setLngLat(lngLat).addTo(map);
-    setTimeout(() => marker.remove(), 5000);
+    pendingLocationMarker = new mapboxgl.Marker(wrap).setLngLat(lngLat).addTo(map);
   }
 
   function enterLocationPickMode(resolveLocation, errCode) {
@@ -3736,6 +3756,9 @@
       // button (rather than a separate flag) both blocks double-clicks and makes the wait visible
       // via the existing button.about-menu-record:disabled style.
       btn.disabled = true;
+      recordFlowBusy = true;
+      btn.classList.add('busy');
+      refreshMenuForceExpanded();
       recordLabel.textContent = 'locating...';
       try {
         // Independent asks -- no reason to serialize the mic-permission prompt behind location.
@@ -3799,6 +3822,11 @@
  async function runPipeline(blob, location, segmentBlobs) {
     const sessionId = 's' + (++sessionCounter);
     const audioURL = URL.createObjectURL(blob);
+
+    // The temporary "you placed it here" pin (if this recording went through manual/default
+    // placement) hands off to this session's own marker at the same spot -- removed right before
+    // creating it so there's never a gap where neither is on the map.
+    if (pendingLocationMarker) { pendingLocationMarker.remove(); pendingLocationMarker = null; }
 
     const popup = new mapboxgl.Popup({ offset: 24, maxWidth: 'none', closeButton: false });
     const wrap = document.createElement('div');
@@ -4092,6 +4120,7 @@
       // No redraw here on purpose — the canvas keeps showing whatever the last live frame
       // painted instead of jumping back to the static idle pattern.
       btn.textContent = '▶';
+      btn.classList.remove('playing');
     }
 
     // Three real bands, not one scalar reused everywhere — bass/mid/high each drive a distinct
@@ -4173,6 +4202,9 @@
         audio.crossOrigin = null;
         audio.load();
       }
+      // Without this, a genuine load error left the button showing '⏸'/orange forever -- nothing
+      // else was listening for 'error' to put it back.
+      stopVisual();
     });
 
     btn.addEventListener('click', async () => {
@@ -4185,6 +4217,7 @@
           return;
         }
         btn.textContent = '⏸';
+        btn.classList.add('playing');
         taintCheckFrames = 0;
         if (analyser && !realGraphFailed) loopReal(); else loopFake(performance.now());
       } else {
