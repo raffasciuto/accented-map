@@ -3,7 +3,10 @@ service firebase.storage {
   match /b/{bucket}/o {
     match /memos/{fileName} {
       allow read: if true;
-      allow write: if request.resource.size < 20 * 1024 * 1024
+      // A "hot take" is a short spoken opinion, not a podcast — 8MB comfortably covers several
+      // minutes of webm/opus voice audio even at a generous bitrate, while meaningfully
+      // shrinking the worst-case storage-cost exposure from the previous 20MB cap.
+      allow write: if request.resource.size < 8 * 1024 * 1024
         && request.resource.contentType.matches('audio/.*');
       allow delete: if false;
     }

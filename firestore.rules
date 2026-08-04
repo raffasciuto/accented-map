@@ -4,9 +4,25 @@ service cloud.firestore {
     match /memos/{memoId} {
       allow read: if true;
 
+      // Firestore's own 1MiB-per-document cap already bounds the worst case; these checks focus
+      // on the specific fields a malformed/oversized direct write could abuse or that client code
+      // assumes a shape for (location.lat/lng especially — a wrong type there breaks map
+      // rendering for every visitor, not just the author of the bad write).
       allow create: if request.resource.data.username is string
         && request.resource.data.username.size() < 60
         && request.resource.data.audioURL is string
+        && request.resource.data.audioURL.size() < 2000
+        && request.resource.data.transcript is string
+        && request.resource.data.transcript.size() < 5000
+        && request.resource.data.language is string
+        && request.resource.data.language.size() < 50
+        && request.resource.data.location is map
+        && request.resource.data.location.lat is number
+        && request.resource.data.location.lat >= -90
+        && request.resource.data.location.lat <= 90
+        && request.resource.data.location.lng is number
+        && request.resource.data.location.lng >= -180
+        && request.resource.data.location.lng <= 180
         && request.resource.data.likes == 0
         && request.resource.data.dislikes == 0
         && request.resource.data.agrees == 0
