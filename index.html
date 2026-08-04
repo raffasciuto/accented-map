@@ -4,6 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Heat Map</title>
+  <!-- TEMPORARY: on-page mobile debug console (eruda) for diagnosing a live-only recording bug
+       that doesn't reproduce locally. Remove once diagnosed -- not meant to ship long-term. -->
+  <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+  <script>eruda.init();</script>
   <script src='https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js'></script>
   <link href='https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css' rel='stylesheet' />
   <!-- Physics only (no rendering) for the AI Archive's 3D force graph — same forceSimulation/
