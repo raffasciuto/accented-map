@@ -1376,6 +1376,23 @@
       .memo-bottom-row { margin-top: 14px; }
       .memo-lang-card, .memo-pred-card { padding: 12px 14px; }
       .memo-publish-card { margin-top: 10px; padding: 12px 14px; }
+      /* clampPopupToViewport (JS) always sets an inline max-height based on how much room is free
+         above/below the map marker -- inline styles beat the max-height above regardless, so
+         however small the card gets it can still be capped to whatever's free near the marker,
+         forcing a scroll. Decoupling the popup from the marker entirely (fixed + centered, same
+         as #about-country-info above) sidesteps that: clampPopupToViewport skips itself on mobile
+         (see its own early-return), so the max-height above is the only constraint left, and it
+         always has the same full, symmetric amount of room regardless of where the marker sits.
+         .mapboxgl-popup is used for exactly one thing in this app -- these memo popups -- so this
+         is safe to target generically. !important matches this file's own existing pattern for
+         overriding Mapbox's inline popup styling (see .mapboxgl-popup-content above). */
+      .mapboxgl-popup {
+        position: fixed !important; top: 50% !important; left: 50% !important;
+        transform: translate(-50%, -50%) !important;
+      }
+      /* The tip normally points at the marker -- meaningless (and visually stray) once the popup
+         isn't anchored to the marker's screen position anymore. */
+      .mapboxgl-popup-tip { display: none; }
     }
   </style>
 </head>
@@ -1970,12 +1987,6 @@
   window.setActiveView = setActiveView;
   positionAppMenu('map');
   window.addEventListener('resize', () => positionAppMenu(currentView));
-  // A plain window resize doesn't fire when Safari's dynamic toolbar collapses/expands mid-scroll
-  // -- visualViewport's own resize event does. Without this, the nav pill's fixed top (computed
-  // against whatever the layout viewport was at the last real resize) can drift out of sync with
-  // the About page's own vh-anchored content as the toolbar shows/hides, which is what let the
-  // pill visually overlap the privacy card after scrolling.
-  if (window.visualViewport) window.visualViewport.addEventListener('resize', () => positionAppMenu(currentView));
 
   sideMenuItems.forEach(item => {
     if (item.id === 'menu-filter-btn') return;
@@ -2466,7 +2477,13 @@
       if (!W || !H) return;
       // Scroll progress of the story section within #about-view — the real scroll container
       // here, since html/body are overflow:hidden and window.scrollY never moves.
-      const travel = storyEl.offsetHeight - H;
+      // The extra -H*0.15 is a deliberate buffer: without it, p reaches 1 (the last reveal fully
+      // settled) at the *exact* scroll position where .about-story-stage's own position:sticky
+      // runs out of room and starts exiting -- on mobile that meant any ordinary scroll (or the
+      // slightest momentum overshoot) landed with the stage already sliding up mid-exit, pulling
+      // the last reveal's card up into the fixed nav pill. This makes the stage still fully stuck
+      // for a stretch of real scroll distance after the last reveal settles.
+      const travel = storyEl.offsetHeight - H - H * 0.15;
       const raw = travel > 0 ? (aboutViewEl.scrollTop - storyEl.offsetTop) / travel : 0;
       const p = Math.max(0, Math.min(1, raw));
 
@@ -4269,6 +4286,11 @@
   // specific marker position. This computes that directly and caps the card to whichever side
   // has more room, then re-triggers the anchor pick against that corrected height.
   function clampPopupToViewport(popup) {
+    // On mobile the popup is fixed + centered in the viewport (see the max-width:480px block),
+    // not anchored to the marker at all -- this function's whole job (cap height to whatever
+    // room is free near the marker) no longer applies, and its inline maxHeight would otherwise
+    // silently override the CSS max-height that's meant to be the only constraint there.
+    if (window.innerWidth <= 480) return;
     const content = popup.getElement && popup.getElement().querySelector('.mapboxgl-popup-content');
     if (!content) return;
     const point = map.project(popup.getLngLat());
