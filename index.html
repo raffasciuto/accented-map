@@ -4095,6 +4095,12 @@
     canvas._memoDraw = draw;
   }
 
+  // Reduced, monochrome icons -- avoids relying on the Unicode ▶/⏸ glyphs, which render as
+  // full-color emoji on several platforms instead of the plain white icon the rest of the design
+  // system uses. fill="currentColor" inherits .memo-play-btn's white text color.
+  const PLAY_ICON_SVG = '<svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M4 2l10 6-10 6z"/></svg>';
+  const PAUSE_ICON_SVG = '<svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><rect x="3" y="2" width="4" height="12" rx="1"/><rect x="9" y="2" width="4" height="12" rx="1"/></svg>';
+
   function wireMemoPlayback(canvas, audio, btn) {
     if (!canvas || !audio || !btn) return;
     // Real analysis is attempted for every memo now, not just the current session's own blob:
@@ -4119,7 +4125,7 @@
       rafId = null;
       // No redraw here on purpose — the canvas keeps showing whatever the last live frame
       // painted instead of jumping back to the static idle pattern.
-      btn.textContent = '▶';
+      btn.innerHTML = PLAY_ICON_SVG;
       btn.classList.remove('playing');
     }
 
@@ -4216,7 +4222,7 @@
         } catch (e) {
           return;
         }
-        btn.textContent = '⏸';
+        btn.innerHTML = PAUSE_ICON_SVG;
         btn.classList.add('playing');
         taintCheckFrames = 0;
         if (analyser && !realGraphFailed) loopReal(); else loopFake(performance.now());
@@ -4410,7 +4416,7 @@
           ${username ? `<span class="memo-tag">👤 ${escapeHTML(username)}</span>` : ''}
           <div class="memo-audio-wrap"><canvas class="memo-canvas"></canvas></div>
           <audio class="memo-audio-el" data-audio-url="${escapeHTML(audioURL)}" style="display:none;"></audio>
-          <button class="memo-play-btn">▶</button>
+          <button class="memo-play-btn">${PLAY_ICON_SVG}</button>
           ${topTabsHTML}
           ${loading ? `<div class="memo-loading">${loading}</div>` : ''}
         </div>
