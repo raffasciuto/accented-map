@@ -1342,8 +1342,14 @@
       .about-hero { margin-bottom: 40px; }
       .about-story { margin: 20px 0 60px; }
       /* The card can't be 320px wide next to a 360px-tall globe on a phone — and the language
-         list is long, so it scrolls internally instead of overflowing the globe container. */
-      #about-country-info { width: min(320px, 85vw); }
+         list is long, so it scrolls internally instead of overflowing the globe container.
+         Fixed + centered in the real viewport (not positioned relative to the globe's local box
+         or the scrolled document, see positionCountryPanel's early return above) so it can never
+         end up with its rounded corners clipped by the actual screen edges. */
+      #about-country-info {
+        width: min(320px, 85vw);
+        position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      }
       #about-country-info-scroll { max-height: min(55vh, 400px); padding: 18px 18px 14px; }
       /* Dots occupy the upper third on phones (see the engine's mobile branch, cy=H*0.30) — the
          copy used to be pinned flush to the screen bottom, leaving a big empty gap under the
@@ -1360,6 +1366,16 @@
       .about-story-body { font-size: 12px; }
       .about-story-src { font-size: 9px; }
       .about-story-detail .about-story-src { font-size: 9px; }
+      /* .memo-popup-complex has no max-height at all otherwise -- the stacked cards (audio wrap,
+         lang/prediction row, publish card) comfortably exceed a phone's actual visible height
+         (Safari's toolbar eats a large chunk of it), forcing a scroll the owner doesn't want.
+         Shared by the in-progress review popup and an already-published memo's popup alike, since
+         both render through the same popupHTML() template. */
+      .memo-popup-complex { max-height: 78vh; }
+      .memo-audio-wrap { height: 90px; }
+      .memo-bottom-row { margin-top: 14px; }
+      .memo-lang-card, .memo-pred-card { padding: 12px 14px; }
+      .memo-publish-card { margin-top: 10px; padding: 12px 14px; }
     }
   </style>
 </head>
@@ -1954,6 +1970,12 @@
   window.setActiveView = setActiveView;
   positionAppMenu('map');
   window.addEventListener('resize', () => positionAppMenu(currentView));
+  // A plain window resize doesn't fire when Safari's dynamic toolbar collapses/expands mid-scroll
+  // -- visualViewport's own resize event does. Without this, the nav pill's fixed top (computed
+  // against whatever the layout viewport was at the last real resize) can drift out of sync with
+  // the About page's own vh-anchored content as the toolbar shows/hides, which is what let the
+  // pill visually overlap the privacy card after scrolling.
+  if (window.visualViewport) window.visualViewport.addEventListener('resize', () => positionAppMenu(currentView));
 
   sideMenuItems.forEach(item => {
     if (item.id === 'menu-filter-btn') return;
@@ -2128,6 +2150,11 @@
   // to the opposite side when it would otherwise run off the globe container's edge.
   function positionCountryPanel(x, y) {
     const panel = document.getElementById('about-country-info');
+    // On a phone this math clamps against the globe's own local box, not the real visible screen
+    // (which shrinks when Safari's toolbar is showing) -- on a cramped mobile layout, staying near
+    // the tapped point matters far less than never getting clipped, so CSS just centers it fixed
+    // in the real viewport instead (see the max-width:480px block).
+    if (window.innerWidth <= 480) return;
     const globeEl = document.getElementById('about-globe');
     const w = globeEl.clientWidth, h = globeEl.clientHeight;
     // Read live rather than assuming the shared 220px — the About card is deliberately wider than
