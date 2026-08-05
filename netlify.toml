@@ -3,8 +3,12 @@
   functions = "netlify/functions"
 
 [build.environment]
-  # These are real secrets, correctly handled -- read via process.env in netlify/functions/*.js,
-  # never hardcoded, and .env (which holds the actual local values) has never been committed
-  # (confirmed via `git log --all --full-history -- "*.env*"`, empty). Netlify's secrets scanner
-  # was still failing the build over their configured values, hence the explicit omit.
-  SECRETS_SCAN_OMIT_KEYS = "APP_SHARED_SECRET,GROQ_API_KEY,HF_TOKEN"
+  # APP_SHARED_SECRET/GROQ_API_KEY/HF_TOKEN are real secrets, correctly handled -- read via
+  # process.env in netlify/functions/*.js, never hardcoded, and .env (which holds the actual local
+  # values) has never been committed (confirmed via `git log --all --full-history -- "*.env*"`,
+  # empty). SECRETS_SCAN_SMART_DETECTION_OMIT_VALUES is also listed here for a different reason:
+  # its own value IS the Firebase apiKey (index.html:40, intentionally public per Firebase's own
+  # docs) -- without also omitting *this* key, Netlify's generic secret-value scanner flags that
+  # env var's value showing up where it's supposed to, even though the smart-detection scanner
+  # it's configured for already knows to ignore it.
+  SECRETS_SCAN_OMIT_KEYS = "APP_SHARED_SECRET,GROQ_API_KEY,HF_TOKEN,SECRETS_SCAN_SMART_DETECTION_OMIT_VALUES"
