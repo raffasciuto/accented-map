@@ -1439,10 +1439,24 @@
          edge above it, overlapping -- caught in this round's own verification screenshot before
          calling it done. Anchoring from a fixed top clear of the nav (with matching max-height so
          the bottom edge still respects the viewport) avoids that instead of re-centering blind. */
+      /* overflow:hidden here, not auto -- this element also draws .about-story-panel::before, an
+         inset:0 animated border ring. Scrolling THIS box scrolls the ring's own box along with the
+         content (its trailing edge is sized to the box's own constrained height, not the full
+         scrolled content height), stranding it as a stray line mid-content instead of a ring around
+         the frame -- confirmed as the actual cause of the "cut on all directions" report, not a
+         device quirk. Same outer/inner split #about-country-info already uses for the identical
+         reason (see its own comment above): outer clips to its shape and never scrolls itself,
+         #story-privacy-detail below does the actual scrolling, fully contained within this clip. */
       .about-story-panel:has(#story-privacy-detail:not([hidden])) {
         position: fixed; top: 110px; left: 50%; transform: translateX(-50%);
-        max-height: calc(100vh - 130px); overflow-y: auto; width: min(90vw, 460px);
+        max-height: calc(100vh - 130px); overflow: hidden; width: min(90vw, 460px);
       }
+      /* The one element that actually scrolls when expanded -- see the outer rule's comment above.
+         30vh keeps this comfortably under the outer's own max-height ceiling alongside the static
+         heading/intro/toggle-button content above it (~311px, measured pre-expansion), verified on
+         both a small phone (375x667) and a standard one (390x844) so the outer's overflow:hidden
+         never ends up clipping this box's own bottom edge. */
+      #story-privacy-detail { max-height: 30vh; overflow-y: auto; }
     }
   </style>
 </head>
