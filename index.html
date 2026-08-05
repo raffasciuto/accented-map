@@ -1787,7 +1787,11 @@
         uy,
         col: i,
         tierOpacity: isLand ? TIER_LAND : TIER_OCEAN,
-        sizeFrac: isLand ? 0.34 : 0.27,
+        // 0.42/0.33 of the cell pitch, up from 0.34/0.27. 0.42 is the ratio the About story and
+        // the memo cards now use, so all three dot systems share one weight; the land:ocean
+        // relationship (~1.26) is preserved exactly, since that contrast is what separates the
+        // continents from the sea. Opacity tiers are untouched.
+        sizeFrac: isLand ? 0.42 : 0.33,
         seed: Math.random() * Math.PI * 2,
         formStart: Math.random() * 1100,
         formDur: 350 + Math.random() * 300
@@ -1865,6 +1869,9 @@
 
     // Sound-wave phase only: extra dots (not part of the map) grow outward from each column's
     // real top/bottom edge, like classic vertical EQ bars -- the map dots above are never touched.
+    // Their 0.40 radius factor tracks the map's own sizeFrac (scaled from the old 0.32 by the same
+    // 0.34 -> 0.42 step), so the bars never read as a thinner, different-weight dot than the map
+    // they grow out of.
     if (t >= PHASE2_END && t < PHASE3_END) {
       const wt = (t - PHASE2_END) / (PHASE3_END - PHASE2_END);
       const envelope = Math.sin(wt * Math.PI);
@@ -1884,10 +1891,10 @@
           const op = TIER_LAND * opMul;
           ctx.fillStyle = 'rgba(201,37,5,' + op.toFixed(3) + ')';
           ctx.beginPath();
-          ctx.arc(px, centerY + (colMinUy[i] - c / GRID_N) * diameter, Math.max(0.3, cellPx * 0.32), 0, Math.PI * 2);
+          ctx.arc(px, centerY + (colMinUy[i] - c / GRID_N) * diameter, Math.max(0.3, cellPx * 0.40), 0, Math.PI * 2);
           ctx.fill();
           ctx.beginPath();
-          ctx.arc(px, centerY + (colMaxUy[i] + c / GRID_N) * diameter, Math.max(0.3, cellPx * 0.32), 0, Math.PI * 2);
+          ctx.arc(px, centerY + (colMaxUy[i] + c / GRID_N) * diameter, Math.max(0.3, cellPx * 0.40), 0, Math.PI * 2);
           ctx.fill();
         }
       }
