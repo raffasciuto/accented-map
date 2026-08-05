@@ -1377,7 +1377,14 @@
          (Safari's toolbar eats a large chunk of it), forcing a scroll the owner doesn't want.
          Shared by the in-progress review popup and an already-published memo's popup alike, since
          both render through the same popupHTML() template. */
-      .memo-popup-complex { max-height: 78vh; }
+      /* .memo-play-btn overhangs 16px below .memo-top-card by design (position:absolute;
+         bottom:-16px -- the same overhang pattern .memo-tag/.memo-popup-close already use above
+         the card, which is exactly why padding-top exists below). Confirmed by direct measurement
+         that this exact 16px overhang -- not any Mapbox sizing quirk -- was the missing room
+         behind the loading-state "scrollable" report: the button's own bottom edge sat 15px past
+         .memo-popup-complex's clipped edge, on the nose. padding-bottom gives it real room, same
+         as padding-top does on the other side, instead of hiding the shortfall. */
+      .memo-popup-complex { max-height: 78vh; padding-bottom: 20px; }
       .memo-audio-wrap { height: 90px; }
       .memo-bottom-row { margin-top: 14px; }
       .memo-lang-card, .memo-pred-card { padding: 12px 14px; }
@@ -1399,15 +1406,6 @@
       /* The tip normally points at the marker -- meaningless (and visually stray) once the popup
          isn't anchored to the marker's screen position anymore. */
       .mapboxgl-popup-tip { display: none; }
-      /* The brief loading/analyzing render (popupHTML's `loading` state, before the ready state
-         fills in the rest) measures a few px shorter than its own content needs, independent of
-         explicit height/min-height overrides tried on every element in the chain -- something in
-         Mapbox's own flex/anchor sizing for this specific transient state, not one identifiable
-         CSS property. Rather than keep chasing that, this scopes the fix to exactly the states
-         that don't need scrolling for anything important: .memo-loading only exists in
-         popupHTML's loading branch, never in the ready state, so this can't affect the ready
-         state's own overflow-y:auto safety net for genuinely long content. */
-      .memo-popup-complex:has(.memo-loading) { overflow-y: hidden; }
       /* .memo-glass's external drop-shadow (0 14px 34px, desktop rule above) extends well beyond
          its own box -- fine on desktop, but here it's nested inside .mapboxgl-popup-content's
          overflow:hidden with little to no room, so it was getting hard-clipped into a stray-
@@ -1423,6 +1421,27 @@
          "the card looks cut off" simultaneously. */
       .about-story-panel {
         box-shadow: inset 0 1px 1px rgba(255,255,255,0.25), inset 0 -8px 16px rgba(0,0,0,0.3), inset 0 0 0 1px rgba(255,255,255,0.05);
+      }
+      /* The privacy panel's "How your data is handled" toggle reveals four full paragraphs --
+         confirmed by direct measurement that expanding it grows the panel from 311px to 864px
+         tall, overflowing .about-story-stage (a sticky, height:100vh, overflow:hidden container
+         built for short fixed-size scroll reveals, never for variable-height expandable content)
+         by 545px with zero scroll mechanism to reach the rest. Every prior round only ever tested
+         the collapsed state, which is why this kept coming back unfixed. Same escape used twice
+         already this session for the same class of problem (#about-country-info, the memo
+         popup): decouple from the clipping ancestor entirely via position:fixed, which isn't
+         contained by .about-story-stage's overflow:hidden (confirmed -- nothing between them sets
+         transform/filter, so nothing creates a containing block that would still trap it). Purely
+         reactive to the detail's own [hidden] attribute -- no JS needed, and it reverts to normal
+         scroll-driven positioning automatically the moment it's collapsed again. */
+      /* Not vertically centered: the nav pill sits fixed near the top of the screen regardless of
+         what page content is doing, and a true center (top:50%) put this tall card's own top
+         edge above it, overlapping -- caught in this round's own verification screenshot before
+         calling it done. Anchoring from a fixed top clear of the nav (with matching max-height so
+         the bottom edge still respects the viewport) avoids that instead of re-centering blind. */
+      .about-story-panel:has(#story-privacy-detail:not([hidden])) {
+        position: fixed; top: 110px; left: 50%; transform: translateX(-50%);
+        max-height: calc(100vh - 130px); overflow-y: auto; width: min(90vw, 460px);
       }
     }
   </style>
@@ -4130,7 +4149,15 @@
     const ctx = canvas.getContext('2d');
     ctx.scale(dpr, dpr);
 
-    const cols = 15, rows = 8;
+    // rows used to be hardcoded to 8, sized for the card's original 140px-tall audio wrap (close
+    // to square cells at that aspect ratio). Reducing that to 90px on mobile (elsewhere in this
+    // file) squished cellH down independent of cellW -- confirmed by direct measurement (cellW
+    // ~17.5px vs cellH ~9.15px, nearly 2:1) -- producing visibly uneven, "compressed" dot spacing
+    // instead of the round, even look the desktop version still has. Deriving rows from the
+    // container's own actual aspect ratio keeps cells close to square regardless of exactly how
+    // tall the wrap ends up being, on any screen size, instead of assuming one fixed shape.
+    const cols = 15;
+    const rows = Math.max(4, Math.round(cols * (rect.height / rect.width)));
     const rand = mulberry32(hashStringToInt(seedStr || 'memo'));
     // Small inset so the grid never touches the card's rounded corners.
     const margin = Math.min(rect.width, rect.height) * 0.06;
