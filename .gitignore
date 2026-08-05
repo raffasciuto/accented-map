@@ -11,3 +11,7 @@ hf-space/
 # committed at the repo root gets deployed, so keeping this untracked is what keeps it off
 # the public site.
 icon-studio.html
+
+# Source SVGs for the icon set. They're converted to cell arrays inlined in index.html, so
+# nothing reads these at runtime -- same publish = "." reasoning as above.
+newicons/
