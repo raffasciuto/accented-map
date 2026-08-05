@@ -1242,11 +1242,21 @@
       color: #b9b7b0;
     }
     .pixel-icon {
+      /* display is load-bearing: width/height do not apply to a non-replaced *inline* element, so
+         without this a <span class="pixel-icon"> silently ignores its own size and the svg below
+         resolves its 100% against the nearest block ancestor instead -- filling whole cards and
+         buttons. It only ever looked fine because every earlier usage happened to sit inside a
+         flex container (which blockifies its children); the moment one landed in .memo-tag or
+         .memo-publish-btn, which are not flex, the icon blew up. */
+      display: inline-block;
+      vertical-align: middle;
       width: 34px; height: 34px;
       margin-bottom: 20px;
       color: #fff;
     }
-    .pixel-icon svg { width: 100%; height: 100%; shape-rendering: crispEdges; }
+    /* No shape-rendering:crispEdges -- that kept the old <rect> pixel icons' square edges sharp,
+       but it disables antialiasing, which leaves these circles visibly jagged at 12px. */
+    .pixel-icon svg { width: 100%; height: 100%; }
     .pixel-icon--sm { width: 12px; height: 12px; margin-bottom: 0; color: inherit; flex-shrink: 0; }
 
     .about-contact {
