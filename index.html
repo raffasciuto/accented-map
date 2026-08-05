@@ -2475,6 +2475,7 @@
   // 8x8 is deliberate: every icon renders at 12px, so a finer grid (the 22x22 branding set)
   // would be well under a pixel per dot and read as a smudge.
   const PIXEL_ICON_CELLS = {
+    locating: [[2,0], [3,0], [4,0], [5,1], [0,2], [1,2], [6,2], [7,2], [0,3], [1,3], [5,3], [6,3], [7,3], [0,4], [1,4], [2,4], [3,4], [4,4], [5,4], [6,4], [7,4], [0,5], [1,5], [2,5], [3,5], [6,5], [7,5], [1,6], [2,6], [3,6], [4,6], [6,6], [2,7], [3,7], [4,7]],
     arrow: [[5,2], [6,2], [0,3], [1,3], [2,3], [3,3], [4,3], [5,3], [6,3], [7,3], [0,4], [1,4], [2,4], [3,4], [4,4], [5,4], [6,4], [7,4], [5,5], [6,5]],
     chili: [[7,1], [4,2], [5,2], [6,2], [4,3], [5,3], [6,3], [0,4], [3,4], [4,4], [5,4], [6,4], [0,5], [1,5], [2,5], [3,5], [4,5], [5,5], [2,6], [3,6]],
     cross: [[0,0], [1,0], [6,0], [7,0], [0,1], [1,1], [2,1], [5,1], [6,1], [7,1], [1,2], [2,2], [3,2], [4,2], [5,2], [6,2], [2,3], [3,3], [4,3], [5,3], [2,4], [3,4], [4,4], [5,4], [1,5], [2,5], [3,5], [4,5], [5,5], [6,5], [0,6], [1,6], [2,6], [5,6], [6,6], [7,6], [0,7], [1,7], [6,7], [7,7]],
@@ -4118,7 +4119,10 @@
       recordFlowBusy = true;
       btn.classList.add('busy');
       refreshMenuForceExpanded();
-      recordLabel.textContent = 'locating...';
+      // innerHTML, not textContent: this label carries an icon now, and textContent
+      // would strip it. Literal markup only. Later states reset it with textContent,
+      // which clears the icon along with the text -- which is what we want.
+      recordLabel.innerHTML = `<span class="pixel-icon pixel-icon--sm">${pixelIconSVG(PIXEL_ICON_CELLS.locating)}</span> locating...`;
       try {
         // Independent asks -- no reason to serialize the mic-permission prompt behind location.
         const mediaStreamPromise = navigator.mediaDevices.getUserMedia({ audio: true });
@@ -4222,7 +4226,7 @@
     marker.togglePopup();
 
     try {
-      recordLabel.textContent = '🌐 detecting language...';
+      recordLabel.textContent = 'detecting language...';
       let { language, text, languageMix, segmentLanguages, whisperConfidence } = await detectLanguageFromSegments(segmentBlobs);
       console.log('Language:', language, '| Mix:', languageMix);
 
