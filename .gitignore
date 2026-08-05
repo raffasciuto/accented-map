@@ -6,3 +6,8 @@ hf-space/
 
 # Local Netlify folder
 .netlify
+
+# Internal icon generator -- local-only tool. publish = "." in netlify.toml means anything
+# committed at the repo root gets deployed, so keeping this untracked is what keeps it off
+# the public site.
+icon-studio.html
