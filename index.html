@@ -1447,9 +1447,16 @@
          device quirk. Same outer/inner split #about-country-info already uses for the identical
          reason (see its own comment above): outer clips to its shape and never scrolls itself,
          #story-privacy-detail below does the actual scrolling, fully contained within this clip. */
+      /* z-index:20 -- position:fixed always opens its own stacking context; an explicit value here
+         removes any ambiguity about how that context compares to #story-canvas's (.about-story-panels,
+         z-index:2) once this panel is no longer straightforwardly nested inside it. Kept as a real
+         defensive guarantee even though it wasn't the actual cause of the bug below (confirmed via
+         elementsFromPoint in real WebKit: this panel already paints above the canvas in the DOM
+         stacking order) -- clears the About page's own 0-5 z-index range, stays well under the nav
+         pill (70) and any modal (90+). */
       .about-story-panel:has(#story-privacy-detail:not([hidden])) {
         position: fixed; top: 110px; left: 50%; transform: translateX(-50%);
-        max-height: calc(100vh - 130px); overflow: hidden; width: min(90vw, 460px);
+        max-height: calc(100vh - 130px); overflow: hidden; width: min(90vw, 460px); z-index: 20;
       }
       /* The one element that actually scrolls when expanded -- see the outer rule's comment above.
          30vh keeps this comfortably under the outer's own max-height ceiling alongside the static
@@ -1457,6 +1464,18 @@
          both a small phone (375x667) and a standard one (390x844) so the outer's overflow:hidden
          never ends up clipping this box's own bottom edge. */
       #story-privacy-detail { max-height: 30vh; overflow-y: auto; }
+      /* The actual cause of "cut on all directions": #story-canvas's dots showed through this panel
+         sharp and unblurred even though it correctly paints behind it (confirmed above) -- Safari's
+         backdrop-filter is known to silently fail to render on position:fixed elements in some
+         compositing contexts, leaving only the panel's own 72%-opacity background-color to hide
+         what's behind it, which isn't opaque enough on its own. Verified directly in WebKit: hiding
+         the canvas removes the artifact entirely; forcing the panel's background near-opaque (without
+         touching backdrop-filter at all) also removes it, confirming backdrop-filter is the thing not
+         doing its job here, not a stacking or scroll issue. Hiding the canvas while expanded -- it's
+         decorative background art for the collapsed scroll-reveal, not meant to be seen through a
+         focused reading panel anyway -- sidesteps the whole question without touching the card's own
+         material (background-color/backdrop-filter stay exactly as they are everywhere else). */
+      .about-story-stage:has(#story-privacy-detail:not([hidden])) #story-canvas { visibility: hidden; }
     }
   </style>
 </head>
