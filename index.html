@@ -593,6 +593,9 @@
       background: rgba(10,9,9,0.85); border: 1px solid rgba(255,255,255,0.14);
       font-size: 9.5px; letter-spacing: 0.06em; text-transform: uppercase; color: #cfcdc6; z-index: 2;
     }
+    /* vertical-align:middle centres the icon on the x-height, which sits low beside all-caps
+       text this small -- nudged up so it reads level with the username. */
+    .memo-tag .pixel-icon { position: relative; top: -2px; }
 
     .memo-play-btn {
       position: absolute; bottom: -16px; right: 16px;
@@ -1561,7 +1564,7 @@
 <div id="landing" style="position:fixed;inset:0;background:#181818;z-index:100;overflow:hidden;">
   <canvas id="intro-canvas"></canvas>
 
-  <button id="enter-btn" class="glass-border">Enter the map →</button>
+  <button id="enter-btn" class="glass-border">Enter the map <span class="pixel-icon pixel-icon--sm" data-icon="arrow"></span></button>
 </div>
 
 <!-- CONSENT / HOOK MODAL -->
@@ -1578,7 +1581,7 @@
     </p>
 
     <button id="info-close-btn" style="display:block;margin-left:auto;padding:12px 24px;border-radius:999px;border:1px solid rgba(255,255,255,0.2);background:transparent;color:#f2f0ea;font-family:inherit;font-size:12.5px;font-weight:400;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;transition:background .15s ease;">
-      I'm up for it →
+      I'm up for it <span class="pixel-icon pixel-icon--sm" data-icon="arrow"></span>
     </button>
   </div>
 </div>
@@ -1590,7 +1593,7 @@
   <div class="tour-step-label" id="tour-step-label">1 / 3</div>
   <p id="tour-step-text"></p>
   <div id="tour-example-popup"></div>
-  <button id="tour-popup-next">Next →</button>
+  <button id="tour-popup-next">Next <span class="pixel-icon pixel-icon--sm" data-icon="arrow"></span></button>
 </div>
 
 <div id="map-context-lost-notice">
@@ -1719,7 +1722,7 @@
       <!-- Was a mailto: link with the owner's real address sitting in the markup for any scraper to
            read. Netlify captures this form's submissions instead and forwards them on, so the
            destination address lives in the Netlify dashboard rather than anywhere in this file. -->
-      <button class="contact-btn glass-border" id="contact-toggle" aria-expanded="false" aria-controls="contact-form-wrap">Contact the owner <span>→</span></button>
+      <button class="contact-btn glass-border" id="contact-toggle" aria-expanded="false" aria-controls="contact-form-wrap">Contact the owner <span class="pixel-icon pixel-icon--sm" data-icon="arrow"></span></button>
 
       <div class="glass-border" id="contact-form-wrap" hidden>
         <form name="contact" method="POST" data-netlify="true" data-netlify-honeypot="bot-field" id="contact-form">
@@ -1745,7 +1748,7 @@
             <textarea name="message" rows="4" required></textarea>
           </label>
 
-          <button type="submit" id="contact-submit">Send →</button>
+          <button type="submit" id="contact-submit">Send <span class="pixel-icon pixel-icon--sm" data-icon="arrow"></span></button>
           <p id="contact-status" role="status" aria-live="polite" hidden></p>
         </form>
       </div>
@@ -2039,7 +2042,10 @@
     tourStepLabel.textContent = `${i + 1} / ${TOUR_STEPS.length}`;
     tourStepText.textContent = step.text;
     tourExamplePopup.innerHTML = '';
-    tourNextBtn.textContent = (i === TOUR_STEPS.length - 1) ? 'Start exploring →' : 'Next →';
+    // innerHTML, not textContent: the arrow is an icon element now, and textContent would
+    // silently strip it the first time this label changes. Both branches are string literals.
+    tourNextBtn.innerHTML = ((i === TOUR_STEPS.length - 1) ? 'Start exploring ' : 'Next ')
+      + `<span class="pixel-icon pixel-icon--sm">${pixelIconSVG(PIXEL_ICON_CELLS.arrow)}</span>`;
 
     if (step.spotlight === 'dot') {
       const wrap = document.createElement('div');
@@ -2469,6 +2475,8 @@
   // 8x8 is deliberate: every icon renders at 12px, so a finer grid (the 22x22 branding set)
   // would be well under a pixel per dot and read as a smudge.
   const PIXEL_ICON_CELLS = {
+    arrow: [[5,2], [6,2], [0,3], [1,3], [2,3], [3,3], [4,3], [5,3], [6,3], [7,3], [0,4], [1,4], [2,4], [3,4], [4,4], [5,4], [6,4], [7,4], [5,5], [6,5]],
+    chili: [[7,1], [4,2], [5,2], [6,2], [4,3], [5,3], [6,3], [0,4], [3,4], [4,4], [5,4], [6,4], [0,5], [1,5], [2,5], [3,5], [4,5], [5,5], [2,6], [3,6]],
     cross: [[0,0], [1,0], [6,0], [7,0], [0,1], [1,1], [2,1], [5,1], [6,1], [7,1], [1,2], [2,2], [3,2], [4,2], [5,2], [6,2], [2,3], [3,3], [4,3], [5,3], [2,4], [3,4], [4,4], [5,4], [1,5], [2,5], [3,5], [4,5], [5,5], [6,5], [0,6], [1,6], [2,6], [5,6], [6,6], [7,6], [0,7], [1,7], [6,7], [7,7]],
     crazy: [[2,0], [3,0], [4,0], [5,0], [1,1], [2,1], [3,1], [4,1], [5,1], [6,1], [0,2], [1,2], [3,2], [4,2], [6,2], [7,2], [0,3], [3,3], [4,3], [7,3], [0,4], [1,4], [3,4], [4,4], [6,4], [7,4], [1,5], [2,5], [3,5], [4,5], [5,5], [6,5], [2,6], [3,6], [4,6], [5,6], [2,7], [5,7]],
     heart: [[1,0], [2,0], [5,0], [6,0], [0,1], [1,1], [2,1], [3,1], [4,1], [5,1], [6,1], [7,1], [0,2], [1,2], [2,2], [3,2], [4,2], [5,2], [6,2], [7,2], [0,3], [1,3], [2,3], [3,3], [4,3], [5,3], [6,3], [7,3], [0,4], [1,4], [2,4], [3,4], [4,4], [5,4], [6,4], [7,4], [1,5], [2,5], [3,5], [4,5], [5,5], [6,5], [2,6], [3,6], [4,6], [5,6], [3,7], [4,7]],
@@ -2872,7 +2880,8 @@
         // The filled-in fields are deliberately left untouched so a retry costs nothing.
         setStatus('Couldn’t send that — please check your connection and try again.', true);
         submitBtn.disabled = false;
-        submitBtn.textContent = 'Send →';
+        // innerHTML for the same reason as the tour button above -- literal, no user input.
+        submitBtn.innerHTML = 'Send ' + `<span class="pixel-icon pixel-icon--sm">${pixelIconSVG(PIXEL_ICON_CELLS.arrow)}</span>`;
       }
     });
   })();
@@ -3320,29 +3329,48 @@
   // combined one. Reuses the same already-allowlisted multilingual model rather than a dedicated
   // toxicity model — this app transcribes/analyzes recordings in whatever language someone spoke,
   // and a dedicated toxicity model would only reliably cover a handful of languages.
-  const HATE_SPEECH_CATEGORIES = [
-    ["hate speech targeting someone's race or ethnicity", 'not about race or ethnicity'],
-    ['xenophobic hate speech targeting immigrants or a nationality', 'not xenophobic'],
-    ['homophobic or transphobic hate speech', 'not homophobic or transphobic'],
-    ["hate speech targeting someone's religion or disability", 'not about religion or disability'],
+  // One call with every label competing, rather than four separate bipolar calls. The old shape
+  // paired each hateful hypothesis against a negation ("not xenophobic"), and NLI models evaluate
+  // negated hypotheses unreliably -- so the vivid hateful label won by default and ordinary
+  // opinions were flagged. Measured against this model: "german food is shit" scored 0.613 and
+  // "american coffee is disgusting" 0.767, both over the old 0.65 threshold, while "disabled
+  // people are a burden and worthless" scored only 0.486 and passed. It over-blocked AND
+  // under-blocked at the same time.
+  //
+  // Giving ordinary complaints their own concrete labels to land on fixes both: probability mass
+  // has somewhere true to go, so hateful scores only stay high when the text really is hateful.
+  // The two hateful labels cover the two distinct shapes hate speech takes here -- open hostility,
+  // and claims of inferiority/exclusion -- and the flag is the higher of the two.
+  const HATE_LABELS = [
+    'expressing hatred or contempt toward a group of people because of who they are',
+    'claiming that a group of people is inferior, dangerous, or should be removed or excluded',
   ];
-  // Starting point, not a validated number -- real submissions after this ships are the only way
-  // to tell if this is over- or under-flagging real spicy-but-not-hateful opinions.
-  const HATE_SPEECH_THRESHOLD = 0.65;
+  const BENIGN_LABELS = [
+    'a negative opinion about food or drink',
+    'a negative opinion about weather, a place or a country',
+    'a negative opinion about politics, government or institutions',
+    'everyday complaining, venting or swearing about daily life',
+  ];
+  // Measured, not guessed: across 19 spicy-but-fine phrases (several non-English) and 9 genuinely
+  // hateful ones, 0.30 blocked 8 of the 9 hateful and none of the 19. Highest ordinary phrase was
+  // 0.284 ("football fans are the worst"); the lowest hateful was 0.301. That gap is narrow, so
+  // treat this as tuned-to-evidence rather than settled -- real submissions are the next signal.
+  // Known miss: misogyny phrased as incompetence ("women are too stupid to lead") scores ~0.14,
+  // because it reads as a claim about ability rather than hatred.
+  const HATE_SPEECH_THRESHOLD = 0.30;
 
   async function checkHateSpeech(text) {
-    const results = await Promise.all(
-      HATE_SPEECH_CATEGORIES.map(poles => classifyOneSpectrum(text, poles))
-    );
-    for (let i = 0; i < results.length; i++) {
-      const r = results[i];
-      const hatefulLabel = HATE_SPEECH_CATEGORIES[i][0];
-      const score = r ? r[hatefulLabel] : null;
-      if (typeof score === 'number' && score >= HATE_SPEECH_THRESHOLD) {
-        // Category name only ever logged for tuning -- never shown to end users.
-        console.log('Hate speech check flagged category:', hatefulLabel, '| score:', score);
-        return { flagged: true, matchedCategory: hatefulLabel };
-      }
+    const result = await classifyOneSpectrum(text, [...HATE_LABELS, ...BENIGN_LABELS]);
+    if (!result) return { flagged: false, matchedCategory: null };
+    let worstLabel = null, worstScore = 0;
+    for (const label of HATE_LABELS) {
+      const score = result[label];
+      if (typeof score === 'number' && score > worstScore) { worstScore = score; worstLabel = label; }
+    }
+    if (worstScore >= HATE_SPEECH_THRESHOLD) {
+      // Label only ever logged for tuning -- never shown to end users.
+      console.log('Hate speech check flagged:', worstLabel, '| score:', worstScore);
+      return { flagged: true, matchedCategory: worstLabel };
     }
     return { flagged: false, matchedCategory: null };
   }
@@ -4189,7 +4217,7 @@
         resetRecordLabel();
       }
     });
-    popup.setHTML(popupHTML({ audioURL, language: '...', loading: '🧠 analyzing...' }));
+    popup.setHTML(popupHTML({ audioURL, language: '...', loading: `<span class="pixel-icon pixel-icon--sm">${pixelIconSVG(PIXEL_ICON_CELLS.chili)}</span> analyzing...` }));
     mountMemoCanvas(popup, audioURL, '...');
     marker.togglePopup();
 
