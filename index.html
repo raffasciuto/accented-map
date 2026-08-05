@@ -1422,60 +1422,55 @@
       .about-story-panel {
         box-shadow: inset 0 1px 1px rgba(255,255,255,0.25), inset 0 -8px 16px rgba(0,0,0,0.3), inset 0 0 0 1px rgba(255,255,255,0.05);
       }
-      /* The privacy panel's "How your data is handled" toggle reveals four full paragraphs --
-         confirmed by direct measurement that expanding it grows the panel from 311px to 864px
-         tall, overflowing .about-story-stage (a sticky, height:100vh, overflow:hidden container
-         built for short fixed-size scroll reveals, never for variable-height expandable content)
-         by 545px with zero scroll mechanism to reach the rest. Every prior round only ever tested
-         the collapsed state, which is why this kept coming back unfixed. Same escape used twice
-         already this session for the same class of problem (#about-country-info, the memo
-         popup): decouple from the clipping ancestor entirely via position:fixed, which isn't
-         contained by .about-story-stage's overflow:hidden (confirmed -- nothing between them sets
-         transform/filter, so nothing creates a containing block that would still trap it). Purely
-         reactive to the detail's own [hidden] attribute -- no JS needed, and it reverts to normal
-         scroll-driven positioning automatically the moment it's collapsed again. */
-      /* Not vertically centered: the nav pill sits fixed near the top of the screen regardless of
-         what page content is doing, and a true center (top:50%) put this tall card's own top
-         edge above it, overlapping -- caught in this round's own verification screenshot before
-         calling it done. Anchoring from a fixed top clear of the nav (with matching max-height so
-         the bottom edge still respects the viewport) avoids that instead of re-centering blind. */
-      /* overflow:hidden here, not auto -- this element also draws .about-story-panel::before, an
-         inset:0 animated border ring. Scrolling THIS box scrolls the ring's own box along with the
-         content (its trailing edge is sized to the box's own constrained height, not the full
-         scrolled content height), stranding it as a stray line mid-content instead of a ring around
-         the frame -- confirmed as the actual cause of the "cut on all directions" report, not a
-         device quirk. Same outer/inner split #about-country-info already uses for the identical
-         reason (see its own comment above): outer clips to its shape and never scrolls itself,
-         #story-privacy-detail below does the actual scrolling, fully contained within this clip. */
-      /* z-index:20 -- position:fixed always opens its own stacking context; an explicit value here
-         removes any ambiguity about how that context compares to #story-canvas's (.about-story-panels,
-         z-index:2) once this panel is no longer straightforwardly nested inside it. Kept as a real
-         defensive guarantee even though it wasn't the actual cause of the bug below (confirmed via
-         elementsFromPoint in real WebKit: this panel already paints above the canvas in the DOM
-         stacking order) -- clears the About page's own 0-5 z-index range, stays well under the nav
-         pill (70) and any modal (90+). */
+      /* Expanding "How your data is handled" reveals four paragraphs, roughly tripling this card's
+         height inside .about-story-stage (sticky, 100vh, overflow:hidden -- built for short
+         fixed-size scroll reveals, not variable-height expandable content). Several earlier attempts
+         solved that by promoting the card to position:fixed so it escaped the stage. That was the
+         wrong call and caused every symptom that followed: fixed freed it from the page's content
+         column too, so it rendered ~37px wider on each side than every other card here (351px vs the
+         column's 278px) with its corners past the visual edges; being detached, page scroll slid the
+         footer over it; and being scrolled as a whole desynced ::before's inset:0 ring from the
+         visible frame, leaving a stray line through the text.
+         So: don't escape. The card keeps its normal position/width/padding/radius/backdrop-filter --
+         byte-for-byte the collapsed card -- which makes side overflow structurally impossible and
+         keeps the ring aligned, since the card itself never scrolls. It only starts higher, is capped
+         to the visible viewport, and lets its detail block take the remaining room and scroll there.
+         Deliberately no measured content sizes: an earlier draft budgeted a fixed px allowance for
+         the heading/intro/button, which would drift on any device with a different width, font scale
+         or wrap. The flex chain below makes the browser measure that itself at runtime instead --
+         .about-story-more-wrap and the detail get min-height:0 so shrinking lands on the detail
+         (the paragraphs and button keep min-height:auto, so they're never squashed), and the detail
+         simply receives whatever is left over on that particular screen.
+         svh, not vh: vh on iOS resolves against the viewport *without* Safari's toolbars, so a
+         vh-based cap let the card extend down into space that isn't actually visible. svh is always
+         the visible area. max(112px, 12svh) clears the nav pill on short screens and stays
+         proportional on tall ones -- 112px measured against the pill's own rendered bottom edge
+         (97.5px: its fixed top:28px plus its actual height) with breathing room, not against any
+         particular device. */
       .about-story-panel:has(#story-privacy-detail:not([hidden])) {
-        position: fixed; top: 110px; left: 50%; transform: translateX(-50%);
-        max-height: calc(100vh - 130px); overflow: hidden; width: min(90vw, 460px); z-index: 20;
+        --expanded-top: max(112px, 12svh);
+        top: var(--expanded-top);
+        max-height: calc(100svh - var(--expanded-top) - 16px);
+        display: flex;
+        flex-direction: column;
       }
-      /* The one element that actually scrolls when expanded -- see the outer rule's comment above.
-         30vh keeps this comfortably under the outer's own max-height ceiling alongside the static
-         heading/intro/toggle-button content above it (~311px, measured pre-expansion), verified on
-         both a small phone (375x667) and a standard one (390x844) so the outer's overflow:hidden
-         never ends up clipping this box's own bottom edge. */
-      #story-privacy-detail { max-height: 30vh; overflow-y: auto; }
-      /* The actual cause of "cut on all directions": #story-canvas's dots showed through this panel
-         sharp and unblurred even though it correctly paints behind it (confirmed above) -- Safari's
-         backdrop-filter is known to silently fail to render on position:fixed elements in some
-         compositing contexts, leaving only the panel's own 72%-opacity background-color to hide
-         what's behind it, which isn't opaque enough on its own. Verified directly in WebKit: hiding
-         the canvas removes the artifact entirely; forcing the panel's background near-opaque (without
-         touching backdrop-filter at all) also removes it, confirming backdrop-filter is the thing not
-         doing its job here, not a stacking or scroll issue. Hiding the canvas while expanded -- it's
-         decorative background art for the collapsed scroll-reveal, not meant to be seen through a
-         focused reading panel anyway -- sidesteps the whole question without touching the card's own
-         material (background-color/backdrop-filter stay exactly as they are everywhere else). */
-      .about-story-stage:has(#story-privacy-detail:not([hidden])) #story-canvas { visibility: hidden; }
+      .about-story-panel:has(#story-privacy-detail:not([hidden])) .about-story-more-wrap {
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+      }
+      /* overscroll-behavior stops a scroll gesture that reaches this block's end from chaining to
+         the page underneath -- which is what pulled the footer up over the card mid-read.
+         min-height pairs with the flex chain above: any value other than the default auto is what
+         lets the shrink land here rather than on the paragraphs, and a floor (rather than 0) keeps
+         this a usable reading window on an unusually short screen, where "whatever's left" can
+         round down to a few unreadable pixels. It scrolls either way. In rem so it tracks the
+         user's own font size instead of being a pixel guess. */
+      #story-privacy-detail {
+        overflow-y: auto;
+        min-height: 5rem;
+        overscroll-behavior: contain;
+      }
     }
   </style>
 </head>
