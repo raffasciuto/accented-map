@@ -4359,19 +4359,37 @@
     // one, alpha's and lightness's own rand() calls are each blended toward that column's real
     // energy value rather than replaced by it, so texture stays organic instead of flat-per-column.
     const hasEnvelope = Array.isArray(energyEnvelope) && energyEnvelope.length === cols;
+    // The envelope decides which cells EXIST, not just how bright they are. Blending it into
+    // alpha (as before) left every card a completely full grid whose randomness was
+    // statistically identical memo to memo -- so every card read as the same texture. Here each
+    // column's own loudness sets a half-height band around the vertical centre and cells outside
+    // it are never created, so the resting card is a dot-matrix rendering of that memo's real
+    // loudness-over-time: a quiet clip is a thin spine, a dynamic one a jagged ridge. It's
+    // unique per memo because it *is* the audio, not a decoration seeded from it.
+    const centreJ = (rows - 1) / 2;
     const cells = [];
     for (let j = 0; j < rows; j++) {
       for (let i = 0; i < cols; i++) {
         // Skip the 4 corner cells so the grid's own silhouette follows the card's rounded
         // corners instead of being sliced there by .memo-audio-wrap's overflow clip.
         if ((i === 0 || i === cols - 1) && (j === 0 || j === rows - 1)) continue;
+        // No envelope (memos published before acousticFeatures was stored, a failed analysis, or
+        // the onboarding tour's demo canvas) keeps every cell, exactly as before. Deliberately no
+        // synthesised envelope: inventing a waveform is the faking this pipeline moved away from.
+        if (hasEnvelope) {
+          const halfSpan = 0.6 + energyEnvelope[i] * (centreJ + 0.4);
+          // Per-dot jitter on the band edge, so the silhouette reads as an organic constellation
+          // rather than a hard-edged bar chart.
+          if (Math.abs(j - centreJ) > halfSpan * (0.85 + rand() * 0.3)) continue;
+        }
         const alphaMix = hasEnvelope ? (rand() * 0.5 + energyEnvelope[i] * 0.5) : rand();
-        const lightnessMix = hasEnvelope ? (rand() * 0.5 + energyEnvelope[i] * 0.5) : rand();
         cells.push({
           x: margin + (i + 0.5) * cellW,
           y: margin + (j + 0.5) * cellH,
-          baseAlpha: 0.18 + alphaMix * 0.55,
-          baseLightness: 20 + lightnessMix * 45,
+          // Wider than the old 0.18-0.73: lightness used to carry part of both the resting
+          // variation and the audio reaction, and the dots are one flat shade now, so opacity
+          // has to cover that range on its own.
+          baseAlpha: 0.30 + alphaMix * 0.65,
           phase: rand() * Math.PI * 2,
           speedMult: 0.85 + rand() * 0.3
         });
@@ -4397,7 +4415,7 @@
 
       ctx.clearRect(0, 0, rect.width, rect.height);
       cells.forEach(c => {
-        let alpha = c.baseAlpha, lightness = c.baseLightness;
+        let alpha = c.baseAlpha;
         if (bands) {
           // Bass -> whether it appears at all: near-silent bass keeps dots at their dim idle
           // shade, presence rises with the low end.
@@ -4409,10 +4427,12 @@
           // High -> opacity: brighter flash range when there's real treble content.
           const highBoost = 0.3 + smoothedHigh * 0.65;
           alpha = Math.min(1, c.baseAlpha * (1 - presence) + (highBoost * osc + highBoost * 0.35) * presence);
-          lightness = c.baseLightness + presence * (10 + osc * 16);
         }
         ctx.beginPath();
-        ctx.fillStyle = `hsla(14, 90%, ${lightness}%, ${alpha})`;
+        // Flat accent, matching the landing globe and the About story. This was the only place in
+        // the app whose dots drifted in hue/lightness (hsla(14, 90%, 20-65%)); opacity alone now
+        // carries the whole audio reaction, which is why baseAlpha's range was widened above.
+        ctx.fillStyle = `rgba(201,37,5,${alpha})`;
         ctx.arc(c.x, c.y, dotRadius, 0, Math.PI * 2);
         ctx.fill();
       });
