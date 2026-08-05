@@ -1304,6 +1304,12 @@
          own gap already puts 12px before this element same as between every other item, so the
          un-zeroed margin-left was stacking on top of that and doubling the gap specifically here. */
       .about-menu-record { gap: 8px; font-size: 10px; margin-left: 0; }
+      /* The dot's base box already sits ~0px inside .app-menu-content-wrap/-inner's
+         overflow:hidden boundary at rest (measured directly) -- before its pulse animation
+         (scale(1.35) + a 0 0 10px 4px glow) even runs, which was getting clipped on every cycle.
+         This margin becomes part of the row's own natural content width, so it reads as the
+         pill's existing right-side breathing room, not a new visible gap. */
+      .about-menu-record-dot { margin-right: 16px; }
       #record-label {
         display: inline-block;
         max-width: 92px;
@@ -1393,6 +1399,31 @@
       /* The tip normally points at the marker -- meaningless (and visually stray) once the popup
          isn't anchored to the marker's screen position anymore. */
       .mapboxgl-popup-tip { display: none; }
+      /* The brief loading/analyzing render (popupHTML's `loading` state, before the ready state
+         fills in the rest) measures a few px shorter than its own content needs, independent of
+         explicit height/min-height overrides tried on every element in the chain -- something in
+         Mapbox's own flex/anchor sizing for this specific transient state, not one identifiable
+         CSS property. Rather than keep chasing that, this scopes the fix to exactly the states
+         that don't need scrolling for anything important: .memo-loading only exists in
+         popupHTML's loading branch, never in the ready state, so this can't affect the ready
+         state's own overflow-y:auto safety net for genuinely long content. */
+      .memo-popup-complex:has(.memo-loading) { overflow-y: hidden; }
+      /* .memo-glass's external drop-shadow (0 14px 34px, desktop rule above) extends well beyond
+         its own box -- fine on desktop, but here it's nested inside .mapboxgl-popup-content's
+         overflow:hidden with little to no room, so it was getting hard-clipped into a stray-
+         looking partial shadow. The three inset shadows never extend past the box, so they're
+         kept as-is; only the external layer is dropped. */
+      .memo-glass {
+        box-shadow: inset 0 1px 1px rgba(255,255,255,0.2), inset 0 -8px 16px rgba(0,0,0,0.25), inset 0 0 0 1px rgba(255,255,255,0.05);
+      }
+      /* Same clipping mechanism, different container: .about-story-panel's external shadow
+         (0 20px 50px, desktop rule above) needs far more room than the ~7px of clearance it
+         actually has before .about-story-stage's own overflow:hidden -- confirmed by direct
+         measurement, not guessed. That clipped shadow is what read as both "a weird shadow" and
+         "the card looks cut off" simultaneously. */
+      .about-story-panel {
+        box-shadow: inset 0 1px 1px rgba(255,255,255,0.25), inset 0 -8px 16px rgba(0,0,0,0.3), inset 0 0 0 1px rgba(255,255,255,0.05);
+      }
     }
   </style>
 </head>
