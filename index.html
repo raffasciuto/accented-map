@@ -1278,6 +1278,77 @@
       transition: background .15s ease;
     }
     .contact-btn:hover { background: rgba(255,255,255,0.1); }
+    /* The toggle is a <button> now rather than an <a>, so it needs the type resets an anchor never
+       needed -- everything visual above is shared unchanged, keeping the collapsed state identical. */
+    #contact-toggle { border: none; font-family: inherit; cursor: pointer; }
+
+    #contact-form-wrap {
+      width: min(100%, 380px);
+      padding: 26px 24px;
+      text-align: left;
+      border-radius: 26px;
+    }
+    #contact-form-wrap[hidden] { display: none; }
+    .contact-field { display: block; margin-bottom: 16px; }
+    /* An author display value outranks the hidden attribute's UA display:none, so both elements the
+       success state hides need this explicitly -- same reason .country-info-src-detail[hidden] exists. */
+    .contact-field[hidden] { display: none; }
+    /* Same treatment as .about-contact-label above, scoped here so the two stay visually paired. */
+    .contact-field-label {
+      display: block;
+      margin-bottom: 7px;
+      font-size: 11px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #77756e;
+    }
+    .contact-field input,
+    .contact-field textarea {
+      width: 100%;
+      padding: 11px 14px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,0.2);
+      background: transparent;
+      color: #f2f0ea;
+      font-family: inherit;
+      font-size: 12.5px;
+      line-height: 1.6;
+      transition: border-color .15s ease;
+    }
+    .contact-field textarea { resize: vertical; min-height: 88px; }
+    .contact-field input:focus,
+    .contact-field textarea:focus {
+      outline: none;
+      border-color: rgba(201,37,5,0.6);
+    }
+    /* Same pill as #tour-popup-next / #info-close-btn. */
+    #contact-submit {
+      display: block; margin-left: auto;
+      padding: 11px 24px; border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.2);
+      background: transparent; color: #f2f0ea; font-family: inherit;
+      font-size: 12px; font-weight: 400; letter-spacing: 0.06em; text-transform: uppercase;
+      cursor: pointer; transition: background .15s ease;
+    }
+    #contact-submit:hover:not(:disabled) { background: rgba(255,255,255,0.08); }
+    #contact-submit:disabled { opacity: 0.5; cursor: default; }
+    #contact-submit[hidden] { display: none; }
+    #contact-status {
+      margin-top: 16px;
+      font-size: 11.5px;
+      line-height: 1.6;
+      color: #b9b7b0;
+      text-align: center;
+    }
+    #contact-status[hidden] { display: none; }
+    #contact-status.is-error { color: #C92505; }
+    /* Clipped rather than display:none -- a display:none field isn't submitted at all, which would
+       silently disable the spam check it exists for. */
+    .contact-hp {
+      position: absolute; overflow: hidden;
+      clip: rect(0 0 0 0); height: 1px; width: 1px;
+      margin: -1px; padding: 0; border: 0;
+    }
 
     @media (max-width: 760px) {
       .about-cols { grid-template-columns: 1fr; }
@@ -1635,7 +1706,39 @@
 
     <div class="about-contact">
       <span class="about-contact-label">Got extra questions or opinions?</span>
-      <a class="contact-btn glass-border" href="mailto:sciutorafaela@gmail.com?subject=Question%20about%20the%20hot%20take%20map%20project">Contact the owner <span>→</span></a>
+      <!-- Was a mailto: link with the owner's real address sitting in the markup for any scraper to
+           read. Netlify captures this form's submissions instead and forwards them on, so the
+           destination address lives in the Netlify dashboard rather than anywhere in this file. -->
+      <button class="contact-btn glass-border" id="contact-toggle" aria-expanded="false" aria-controls="contact-form-wrap">Contact the owner <span>→</span></button>
+
+      <div class="glass-border" id="contact-form-wrap" hidden>
+        <form name="contact" method="POST" data-netlify="true" data-netlify-honeypot="bot-field" id="contact-form">
+          <!-- Netlify matches the submission back to the detected form by this field, which a
+               fetch-based POST has to carry explicitly (a normal form post would supply it). -->
+          <input type="hidden" name="form-name" value="contact">
+          <!-- Spam trap: hidden from people, not from bots. Must stay in the layout (clipped, not
+               display:none) or it wouldn't be submitted and the check would never fire. -->
+          <p class="contact-hp">
+            <label>Don't fill this out if you're human: <input name="bot-field" tabindex="-1" autocomplete="off"></label>
+          </p>
+
+          <label class="contact-field">
+            <span class="contact-field-label">Your name</span>
+            <input type="text" name="name" required autocomplete="name">
+          </label>
+          <label class="contact-field">
+            <span class="contact-field-label">Your email</span>
+            <input type="email" name="email" required autocomplete="email">
+          </label>
+          <label class="contact-field">
+            <span class="contact-field-label">Message</span>
+            <textarea name="message" rows="4" required></textarea>
+          </label>
+
+          <button type="submit" id="contact-submit">Send →</button>
+          <p id="contact-status" role="status" aria-live="polite" hidden></p>
+        </form>
+      </div>
     </div>
   </div>
 </div>
@@ -2701,6 +2804,61 @@
         toggle.setAttribute('aria-expanded', String(open));
       });
     }
+  })();
+
+  // Contact form. Same hidden-attribute reveal as the privacy detail above; the submission itself
+  // goes to Netlify Forms, which holds the destination address so it never appears in this file.
+  (function initContactForm() {
+    const toggle = document.getElementById('contact-toggle');
+    const wrap = document.getElementById('contact-form-wrap');
+    const form = document.getElementById('contact-form');
+    const submitBtn = document.getElementById('contact-submit');
+    const status = document.getElementById('contact-status');
+    if (!toggle || !wrap || !form || !submitBtn || !status) return;
+
+    toggle.addEventListener('click', () => {
+      const open = wrap.hasAttribute('hidden');
+      if (open) wrap.removeAttribute('hidden'); else wrap.setAttribute('hidden', '');
+      toggle.setAttribute('aria-expanded', String(open));
+      // The toggle sits at the very bottom of the page, so the form it reveals opens below the fold
+      // -- without this the tap looks like it did nothing at all.
+      if (open) wrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+
+    function setStatus(message, isError) {
+      status.textContent = message;
+      status.classList.toggle('is-error', !!isError);
+      status.removeAttribute('hidden');
+    }
+
+    form.addEventListener('submit', async (e) => {
+      // Netlify would accept a plain form POST, but that navigates away from the app entirely --
+      // this is a single-page view, so the submission is sent in the background instead.
+      e.preventDefault();
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Sending…';
+      status.setAttribute('hidden', '');
+
+      try {
+        const res = await fetch('/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams(new FormData(form)).toString()
+        });
+        if (!res.ok) throw new Error('Submission failed: ' + res.status);
+        // Replaced rather than reset: there's nothing useful left to do with the form once it's
+        // sent, and leaving it filled invites an accidental duplicate submission.
+        form.querySelectorAll('.contact-field').forEach(f => f.setAttribute('hidden', ''));
+        submitBtn.setAttribute('hidden', '');
+        setStatus('Message sent — thanks! You’ll get a reply at the address you gave.', false);
+      } catch (err) {
+        console.error('Contact form submission failed:', err);
+        // The filled-in fields are deliberately left untouched so a retry costs nothing.
+        setStatus('Couldn’t send that — please check your connection and try again.', true);
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Send →';
+      }
+    });
   })();
 
   let archiveNodesData = [];
