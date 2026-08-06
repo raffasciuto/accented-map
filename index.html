@@ -1564,14 +1564,14 @@
 <div id="landing" style="position:fixed;inset:0;background:#181818;z-index:100;overflow:hidden;">
   <canvas id="intro-canvas"></canvas>
 
-  <button id="enter-btn" class="glass-border">Enter the map <span class="pixel-icon pixel-icon--sm" data-icon="arrow"></span></button>
+  <button id="enter-btn" class="glass-border">Enter the map →</button>
 </div>
 
 <!-- CONSENT / HOOK MODAL -->
 <div id="info-modal" style="position:fixed;inset:0;background:rgba(0,0,0,0.55);backdrop-filter:blur(6px);z-index:90;display:none;align-items:center;justify-content:center;padding:24px;">
   <div class="glass-border" style="position:relative;max-width:380px;width:100%;padding:36px 28px;font-family:'DM Mono','SFMono-Regular',Menlo,monospace;text-align:left;">
 
-    <button id="info-x-btn" class="country-info-close"><span class="pixel-icon pixel-icon--sm" data-icon="cross"></span></button>
+    <button id="info-x-btn" class="country-info-close">✕</button>
 
     <p style="font-size:16px;font-weight:400;color:#f2f0ea;line-height:1.5;letter-spacing:0.04em;text-transform:uppercase;margin-bottom:16px;">
       Want to experience the hot take map?
@@ -1581,7 +1581,7 @@
     </p>
 
     <button id="info-close-btn" style="display:block;margin-left:auto;padding:12px 24px;border-radius:999px;border:1px solid rgba(255,255,255,0.2);background:transparent;color:#f2f0ea;font-family:inherit;font-size:12.5px;font-weight:400;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;transition:background .15s ease;">
-      I'm up for it <span class="pixel-icon pixel-icon--sm" data-icon="arrow"></span>
+      I'm up for it →
     </button>
   </div>
 </div>
@@ -1589,11 +1589,11 @@
 <!-- ONBOARDING TOUR -->
 <div id="tour-dim"></div>
 <div id="tour-popup" class="glass-border">
-  <button id="tour-skip-btn" class="country-info-close"><span class="pixel-icon pixel-icon--sm" data-icon="cross"></span></button>
+  <button id="tour-skip-btn" class="country-info-close">✕</button>
   <div class="tour-step-label" id="tour-step-label">1 / 3</div>
   <p id="tour-step-text"></p>
   <div id="tour-example-popup"></div>
-  <button id="tour-popup-next">Next <span class="pixel-icon pixel-icon--sm" data-icon="arrow"></span></button>
+  <button id="tour-popup-next">Next →</button>
 </div>
 
 <div id="map-context-lost-notice">
@@ -1637,7 +1637,7 @@
   </div>
 
   <div id="archive-filter-panel" class="glass-border">
-    <button class="country-info-close" id="archive-filter-panel-close"><span class="pixel-icon pixel-icon--sm" data-icon="cross"></span></button>
+    <button class="country-info-close" id="archive-filter-panel-close">✕</button>
     <div id="archive-filter-panel-scroll">
       <div id="archive-filter-groups"></div>
     </div>
@@ -1722,7 +1722,7 @@
       <!-- Was a mailto: link with the owner's real address sitting in the markup for any scraper to
            read. Netlify captures this form's submissions instead and forwards them on, so the
            destination address lives in the Netlify dashboard rather than anywhere in this file. -->
-      <button class="contact-btn glass-border" id="contact-toggle" aria-expanded="false" aria-controls="contact-form-wrap">Contact the owner <span class="pixel-icon pixel-icon--sm" data-icon="arrow"></span></button>
+      <button class="contact-btn glass-border" id="contact-toggle" aria-expanded="false" aria-controls="contact-form-wrap">Contact the owner <span>→</span></button>
 
       <div class="glass-border" id="contact-form-wrap" hidden>
         <form name="contact" method="POST" data-netlify="true" data-netlify-honeypot="bot-field" id="contact-form">
@@ -1748,7 +1748,7 @@
             <textarea name="message" rows="4" required></textarea>
           </label>
 
-          <button type="submit" id="contact-submit">Send <span class="pixel-icon pixel-icon--sm" data-icon="arrow"></span></button>
+          <button type="submit" id="contact-submit">Send →</button>
           <p id="contact-status" role="status" aria-live="polite" hidden></p>
         </form>
       </div>
@@ -2042,10 +2042,7 @@
     tourStepLabel.textContent = `${i + 1} / ${TOUR_STEPS.length}`;
     tourStepText.textContent = step.text;
     tourExamplePopup.innerHTML = '';
-    // innerHTML, not textContent: the arrow is an icon element now, and textContent would
-    // silently strip it the first time this label changes. Both branches are string literals.
-    tourNextBtn.innerHTML = ((i === TOUR_STEPS.length - 1) ? 'Start exploring ' : 'Next ')
-      + `<span class="pixel-icon pixel-icon--sm">${pixelIconSVG(PIXEL_ICON_CELLS.arrow)}</span>`;
+    tourNextBtn.textContent = (i === TOUR_STEPS.length - 1) ? 'Start exploring →' : 'Next →';
 
     if (step.spotlight === 'dot') {
       const wrap = document.createElement('div');
@@ -2422,7 +2419,7 @@
   function renderCountryInfo(iso, fallbackName) {
     const panel = document.getElementById('about-country-info');
     const data = ABOUT_COUNTRY_DATA && ABOUT_COUNTRY_DATA[iso];
-    const closeBtn = `<button class="country-info-close" onclick="closeCountryInfo()"><span class="pixel-icon pixel-icon--sm">${pixelIconSVG(PIXEL_ICON_CELLS.cross)}</span></button>`;
+    const closeBtn = `<button class="country-info-close" onclick="closeCountryInfo()">✕</button>`;
     if (!data) {
       panel.innerHTML = `${closeBtn}<div id="about-country-info-scroll"><div class="country-info-name">${escapeHTML(fallbackName || iso || 'Unknown')}</div><div class="country-info-note">No data collected yet.</div></div>`;
       panel.style.display = 'block';
@@ -2475,27 +2472,16 @@
   // 8x8 is deliberate: every icon renders at 12px, so a finer grid (the 22x22 branding set)
   // would be well under a pixel per dot and read as a smudge.
   const PIXEL_ICON_CELLS = {
-    saving: [[1,0], [2,0], [3,0], [4,0], [5,0], [6,0], [1,1], [2,1], [3,1], [4,1], [5,1], [6,1], [1,2], [2,2], [3,2], [4,2], [5,2], [6,2], [1,3], [2,3], [3,3], [4,3], [5,3], [6,3], [1,4], [2,4], [3,4], [4,4], [5,4], [6,4], [1,5], [2,5], [3,5], [4,5], [5,5], [6,5], [1,6], [2,6], [5,6], [6,6], [1,7], [6,7]],
-    microphone: [[3,0], [4,0], [2,1], [3,1], [4,1], [5,1], [2,2], [3,2], [4,2], [5,2], [1,3], [2,3], [3,3], [4,3], [5,3], [6,3], [1,4], [2,4], [3,4], [4,4], [5,4], [6,4], [2,5], [3,5], [4,5], [5,5], [3,6], [4,6], [2,7], [3,7], [4,7], [5,7]],
-    detecting: [[1,0], [2,0], [3,0], [4,0], [0,1], [5,1], [0,2], [5,2], [0,3], [5,3], [0,4], [4,4], [5,4], [1,5], [2,5], [3,5], [4,5], [5,5], [6,5], [5,6], [6,6], [7,6], [6,7], [7,7]],
-    locating: [[2,0], [3,0], [4,0], [5,1], [0,2], [1,2], [6,2], [7,2], [0,3], [1,3], [5,3], [6,3], [7,3], [0,4], [1,4], [2,4], [3,4], [4,4], [5,4], [6,4], [7,4], [0,5], [1,5], [2,5], [3,5], [6,5], [7,5], [1,6], [2,6], [3,6], [4,6], [6,6], [2,7], [3,7], [4,7]],
-    arrow: [[5,2], [6,2], [0,3], [1,3], [2,3], [3,3], [4,3], [5,3], [6,3], [7,3], [0,4], [1,4], [2,4], [3,4], [4,4], [5,4], [6,4], [7,4], [5,5], [6,5]],
-    chili: [[7,1], [4,2], [5,2], [6,2], [4,3], [5,3], [6,3], [0,4], [3,4], [4,4], [5,4], [6,4], [0,5], [1,5], [2,5], [3,5], [4,5], [5,5], [2,6], [3,6]],
-    cross: [[0,0], [1,0], [6,0], [7,0], [0,1], [1,1], [2,1], [5,1], [6,1], [7,1], [1,2], [2,2], [3,2], [4,2], [5,2], [6,2], [2,3], [3,3], [4,3], [5,3], [2,4], [3,4], [4,4], [5,4], [1,5], [2,5], [3,5], [4,5], [5,5], [6,5], [0,6], [1,6], [2,6], [5,6], [6,6], [7,6], [0,7], [1,7], [6,7], [7,7]],
     crazy: [[2,0], [3,0], [4,0], [5,0], [1,1], [2,1], [3,1], [4,1], [5,1], [6,1], [0,2], [1,2], [3,2], [4,2], [6,2], [7,2], [0,3], [3,3], [4,3], [7,3], [0,4], [1,4], [3,4], [4,4], [6,4], [7,4], [1,5], [2,5], [3,5], [4,5], [5,5], [6,5], [2,6], [3,6], [4,6], [5,6], [2,7], [5,7]],
     heart: [[1,0], [2,0], [5,0], [6,0], [0,1], [1,1], [2,1], [3,1], [4,1], [5,1], [6,1], [7,1], [0,2], [1,2], [2,2], [3,2], [4,2], [5,2], [6,2], [7,2], [0,3], [1,3], [2,3], [3,3], [4,3], [5,3], [6,3], [7,3], [0,4], [1,4], [2,4], [3,4], [4,4], [5,4], [6,4], [7,4], [1,5], [2,5], [3,5], [4,5], [5,5], [6,5], [2,6], [3,6], [4,6], [5,6], [3,7], [4,7]],
-    pause: [[0,0], [1,0], [2,0], [5,0], [6,0], [7,0], [0,1], [1,1], [2,1], [5,1], [6,1], [7,1], [0,2], [1,2], [2,2], [5,2], [6,2], [7,2], [0,3], [1,3], [2,3], [5,3], [6,3], [7,3], [0,4], [1,4], [2,4], [5,4], [6,4], [7,4], [0,5], [1,5], [2,5], [5,5], [6,5], [7,5], [0,6], [1,6], [2,6], [5,6], [6,6], [7,6], [0,7], [1,7], [2,7], [5,7], [6,7], [7,7]],
-    play: [[1,0], [1,1], [2,1], [3,1], [1,2], [2,2], [3,2], [4,2], [5,2], [1,3], [2,3], [3,3], [4,3], [5,3], [6,3], [1,4], [2,4], [3,4], [4,4], [5,4], [6,4], [1,5], [2,5], [3,5], [4,5], [5,5], [1,6], [2,6], [3,6], [1,7]],
     question: [[2,0], [3,0], [4,0], [5,0], [1,1], [2,1], [5,1], [6,1], [5,2], [6,2], [4,3], [5,3], [3,4], [4,4], [3,5], [4,5], [3,7], [4,7]],
-    tick: [[6,1], [7,1], [5,2], [6,2], [7,2], [0,3], [1,3], [4,3], [5,3], [6,3], [0,4], [1,4], [2,4], [3,4], [4,4], [5,4], [1,5], [2,5], [3,5], [4,5], [2,6], [3,6]],
-    trash: [[3,0], [4,0], [1,1], [2,1], [3,1], [4,1], [5,1], [6,1], [2,2], [3,2], [4,2], [5,2], [2,3], [3,3], [4,3], [5,3], [2,4], [5,4], [2,5], [5,5], [2,6], [3,6], [4,6], [5,6], [2,7], [3,7], [4,7], [5,7]],
     user: [[3,0], [4,0], [1,1], [2,1], [3,1], [4,1], [5,1], [6,1], [1,2], [2,2], [3,2], [4,2], [5,2], [6,2], [0,3], [1,3], [3,3], [4,3], [6,3], [7,3], [0,4], [1,4], [2,4], [3,4], [4,4], [5,4], [6,4], [7,4], [1,5], [6,5], [1,6], [2,6], [3,6], [4,6], [5,6], [6,6], [3,7], [4,7]]
   };
 
   function pixelIconSVG(cells) {
     // Circles at cell centres on the 8x8 grid, radius 0.5 -- the same geometry the icon studio
-    // exports, so what ships matches what was designed there. shape-rendering:crispEdges is left
-    // on .pixel-icon svg for the old rect set's benefit; it is harmless for circles.
+    // exports, so what ships matches what was designed there. Only four icons still use this
+    // (question, heart, crazy, user); everything else went back to text/emoji before delivery.
     const dots = cells.map(([x, y]) => `<circle cx="${x + 0.5}" cy="${y + 0.5}" r="0.5"/>`).join('');
     return `<svg viewBox="0 0 8 8" fill="currentColor">${dots}</svg>`;
   }
@@ -2884,8 +2870,7 @@
         // The filled-in fields are deliberately left untouched so a retry costs nothing.
         setStatus('Couldn’t send that — please check your connection and try again.', true);
         submitBtn.disabled = false;
-        // innerHTML for the same reason as the tour button above -- literal, no user input.
-        submitBtn.innerHTML = 'Send ' + `<span class="pixel-icon pixel-icon--sm">${pixelIconSVG(PIXEL_ICON_CELLS.arrow)}</span>`;
+        submitBtn.textContent = 'Send →';
       }
     });
   })();
@@ -3159,7 +3144,7 @@
     }
 
     card.innerHTML = `
-      <button class="country-info-close" onclick="closeArchiveNodeCard()"><span class="pixel-icon pixel-icon--sm">${pixelIconSVG(PIXEL_ICON_CELLS.cross)}</span></button>
+      <button class="country-info-close" onclick="closeArchiveNodeCard()">✕</button>
       <div class="country-info-name">${escapeHTML(n.username)}</div>
       ${transcriptHTML}
       <div class="country-info-row"><span>Language</span><span>${escapeHTML(n.language)}</span></div>
@@ -3686,8 +3671,7 @@
       const storage = window._storage;
       if (!db || !storage) { console.log('Firebase not ready'); return; }
 
-      // innerHTML for the icon, same as the locating state. Literal markup only.
-      recordLabel.innerHTML = `<span class="pixel-icon pixel-icon--sm">${pixelIconSVG(PIXEL_ICON_CELLS.saving)}</span> saving audio...`;
+      recordLabel.textContent = '💾 saving audio...';
       const storageRef = window._storageRef;
       const uploadBytes = window._uploadBytes;
       const getDownloadURL = window._getDownloadURL;
@@ -4123,10 +4107,7 @@
       recordFlowBusy = true;
       btn.classList.add('busy');
       refreshMenuForceExpanded();
-      // innerHTML, not textContent: this label carries an icon now, and textContent
-      // would strip it. Literal markup only. Later states reset it with textContent,
-      // which clears the icon along with the text -- which is what we want.
-      recordLabel.innerHTML = `<span class="pixel-icon pixel-icon--sm">${pixelIconSVG(PIXEL_ICON_CELLS.locating)}</span> locating...`;
+      recordLabel.textContent = 'locating...';
       try {
         // Independent asks -- no reason to serialize the mic-permission prompt behind location.
         const mediaStreamPromise = navigator.mediaDevices.getUserMedia({ audio: true });
@@ -4225,12 +4206,12 @@
         resetRecordLabel();
       }
     });
-    popup.setHTML(popupHTML({ audioURL, language: '...', loading: `<span class="pixel-icon pixel-icon--sm">${pixelIconSVG(PIXEL_ICON_CELLS.chili)}</span> analyzing...` }));
+    popup.setHTML(popupHTML({ audioURL, language: '...', loading: '🧠 analyzing...' }));
     mountMemoCanvas(popup, audioURL, '...');
     marker.togglePopup();
 
     try {
-      recordLabel.innerHTML = `<span class="pixel-icon pixel-icon--sm">${pixelIconSVG(PIXEL_ICON_CELLS.detecting)}</span> detecting language...`;
+      recordLabel.textContent = '🌐 detecting language...';
       let { language, text, languageMix, segmentLanguages, whisperConfidence } = await detectLanguageFromSegments(segmentBlobs);
       console.log('Language:', language, '| Mix:', languageMix);
 
@@ -4251,7 +4232,7 @@
       popup.setHTML(popupHTML({ audioURL, language, languageMix, loading: '🎙️ measuring accent + content...' }));
       mountMemoCanvas(popup, audioURL, language);
 
-      recordLabel.innerHTML = `<span class="pixel-icon pixel-icon--sm">${pixelIconSVG(PIXEL_ICON_CELLS.microphone)}</span> measuring accent + content...`;
+      recordLabel.textContent = '🎙️ measuring accent + content...';
       // Five independent real signals — run concurrently instead of back to back. Each of these
       // already defends itself against failure/timeout (returns null rather than throwing), so a
       // slow/unreachable HF Space or Inference API never blocks the others or publishing.
@@ -4503,8 +4484,8 @@
   // Reduced, monochrome icons -- avoids relying on the Unicode ▶/⏸ glyphs, which render as
   // full-color emoji on several platforms instead of the plain white icon the rest of the design
   // system uses. fill="currentColor" inherits .memo-play-btn's white text color.
-  const PLAY_ICON_SVG = `<span class="pixel-icon pixel-icon--sm" style="width:13px;height:13px">${pixelIconSVG(PIXEL_ICON_CELLS.play)}</span>`;
-  const PAUSE_ICON_SVG = `<span class="pixel-icon pixel-icon--sm" style="width:13px;height:13px">${pixelIconSVG(PIXEL_ICON_CELLS.pause)}</span>`;
+  const PLAY_ICON_SVG = '<svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M4 2l10 6-10 6z"/></svg>';
+  const PAUSE_ICON_SVG = '<svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><rect x="3" y="2" width="4" height="12" rx="1"/><rect x="9" y="2" width="4" height="12" rx="1"/></svg>';
 
   function wireMemoPlayback(canvas, audio, btn) {
     if (!canvas || !audio || !btn) return;
@@ -4820,7 +4801,7 @@
 
     return `
       <div class="memo-popup-complex">
-        <button class="country-info-close memo-popup-close" onclick="closeMemoPopup()"><span class="pixel-icon pixel-icon--sm">${pixelIconSVG(PIXEL_ICON_CELLS.cross)}</span></button>
+        <button class="country-info-close memo-popup-close" onclick="closeMemoPopup()">✕</button>
         ${extraContent}
         <div class="memo-top-card memo-glass">
           ${username ? `<span class="memo-tag"><span class="pixel-icon pixel-icon--sm">${pixelIconSVG(PIXEL_ICON_CELLS.user)}</span> ${escapeHTML(username)}</span>` : ''}
@@ -4844,8 +4825,8 @@
         <input id="username-input-${sessionId}" type="text" value="${escapeHTML(usernameDefault)}" placeholder="Choose a name (optional)" class="memo-username-input">
         <div class="memo-publish-caption">Add your hot take to the map?</div>
         <div class="memo-publish-actions">
-          <button onclick="publishMemo('${sessionId}')" class="memo-publish-btn"><span class="pixel-icon pixel-icon--sm">${pixelIconSVG(PIXEL_ICON_CELLS.tick)}</span> Publish</button>
-          <button onclick="deleteMemo('${sessionId}')" class="memo-publish-btn memo-publish-btn--ghost"><span class="pixel-icon pixel-icon--sm">${pixelIconSVG(PIXEL_ICON_CELLS.trash)}</span> Delete</button>
+          <button onclick="publishMemo('${sessionId}')" class="memo-publish-btn">Publish 🌍</button>
+          <button onclick="deleteMemo('${sessionId}')" class="memo-publish-btn memo-publish-btn--ghost">Delete</button>
         </div>
       </div>`;
   }
@@ -4858,7 +4839,7 @@
       <div class="memo-publish-card memo-glass">
         <div class="memo-publish-error">⚠ This recording can't be published — it may contain hate speech or discriminatory content.</div>
         <div class="memo-publish-actions">
-          <button onclick="deleteMemo('${sessionId}')" class="memo-publish-btn memo-publish-btn--ghost"><span class="pixel-icon pixel-icon--sm">${pixelIconSVG(PIXEL_ICON_CELLS.trash)}</span> Delete</button>
+          <button onclick="deleteMemo('${sessionId}')" class="memo-publish-btn memo-publish-btn--ghost">Delete</button>
         </div>
       </div>`;
   }
