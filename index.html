@@ -1201,6 +1201,19 @@
     .about-story-more:hover { background: rgba(255,255,255,0.08); }
     .pixel-icon--btn { cursor: pointer; }
     .about-story-detail { padding: 0 16px 14px; }
+    /* This panel is a fixed ~819px once expanded, sitting in .about-story-stage -- sticky, 100vh,
+       overflow:hidden -- so on anything shorter than roughly a 900px viewport the bottom of it was
+       simply cut off by the stage, with no way to reach it. Measured: 20px lost at 1440x800, 120px
+       at 1280x700, 200px at 1024x620. Capping the detail is what gives it somewhere to go.
+       The 300px is the rest of the panel (headline, body, button, padding) measured, not guessed.
+       On a roomy screen the detail is ~533px and the cap is well above it, so nothing scrolls and
+       ordinary desktops look untouched. The scrollbar, when it does appear, is the same thin red
+       one as #about-country-info-scroll rather than the platform default. */
+    #story-privacy-detail { max-height: calc(100vh - 300px); overflow-y: auto; overscroll-behavior: contain; }
+    #story-privacy-detail::-webkit-scrollbar { width: 5px; }
+    #story-privacy-detail::-webkit-scrollbar-track { background: transparent; }
+    #story-privacy-detail::-webkit-scrollbar-thumb { background: rgba(201,37,5,0.4); border-radius: 999px; }
+    #story-privacy-detail { scrollbar-width: thin; scrollbar-color: rgba(201,37,5,0.4) transparent; }
     .about-story-detail p { font-size: 11.5px; line-height: 1.7; color: #b9b7b0; margin-bottom: 10px; }
     .about-story-detail p:last-child { margin-bottom: 0; }
     /* Higher specificity than ".about-story-detail p" above, needed so the citation keeps its
@@ -1778,16 +1791,16 @@
 
           <div class="about-story-panel" data-reveal="3">
             <p class="about-story-stat">We're keeping your hot take for as long as this project needs it — not forever.</p>
-            <p class="about-story-body">Recordings are stored securely, used only for this thesis, and permanently deleted once it concludes. Nothing is sold, shared, or used to train any external model.</p>
+            <p class="about-story-body">Publishing a memo makes it public — that's the map. It's used only for this thesis and permanently deleted once it concludes. Nothing is sold or used to train any external model.</p>
             <div class="about-story-more-wrap">
               <button class="about-story-more" id="story-privacy-toggle" aria-expanded="false">
                 <span class="pixel-icon pixel-icon--sm pixel-icon--btn" data-icon="question"></span>
                 <span>How your data is handled</span>
               </button>
               <div class="about-story-detail" id="story-privacy-detail" hidden>
-                <p>Recordings are uploaded to a private Firebase Storage bucket and never made public beyond this map. Each memo is tied to a randomly generated username, not your identity — no account, no email, no device fingerprint is collected.</p>
-                <p>Location is stored only as the approximate coordinates you consented to share when recording, used solely to place the dot on the map.</p>
-                <p>The transcript and audio are sent once to language-analysis models to produce the language and classification results shown in your memo card. They are not retained by those services for training.</p>
+                <p>When you publish, your memo becomes public: the audio, its transcript and its dot are stored in a Firebase database and bucket that anyone can read. That's what putting it on the map means — there's no hidden copy, and nothing is shown that you didn't choose to publish. What isn't collected is your identity: each memo carries a randomly generated username, and there's no account, no email and no device fingerprint.</p>
+                <p>Your location is rounded to roughly 110 metres before it's stored, so the dot lands in your neighbourhood rather than at your door. You can also decline location access entirely and place the pin yourself, or take a default nearby spot.</p>
+                <p>To produce the language and classification results on your card, the audio is transcribed and the text analysed. Three services see it: Groq transcribes the recording, a Hugging Face Space run by this project measures accent (your browser sends it the audio directly), and — only if you choose the default-spot option — ipwho.is sees your IP address in order to guess a city. None of them use your recording to train models.</p>
                 <p>When this thesis project concludes, the entire database and storage bucket are deleted in full.</p>
               </div>
             </div>
@@ -4191,6 +4204,16 @@
     }
   }
 
+  // ~110m at 3 decimal places. Coarse enough that a memo points at a neighbourhood rather than an
+  // address, fine enough that at the zoom the app flies to (13) the dot moves by about 6px -- the
+  // map reads identically. Applied to every location path, since all of them resolve through the
+  // same promise: real geolocation, a manually dropped pin, and the IP-derived default spot.
+  const COORD_DECIMALS = 3;
+  function roundCoords([lng, lat]) {
+    const f = 10 ** COORD_DECIMALS;
+    return [Math.round(lng * f) / f, Math.round(lat * f) / f];
+  }
+
   async function finalizeRecording() {
     const rawBlob = await stopContinuousRecorder();
     const durationMs = performance.now() - continuousStartTime;
@@ -4234,7 +4257,13 @@
           );
         });
 
-        userLocation = await locationPromise;
+        // Deliberately coarsened before anything -- the map, the pin, the upload -- ever sees it.
+        // getCurrentPosition on a phone is metre-accurate, and a memo is a voice recording with an
+        // exact timestamp in a publicly readable collection: stored raw, that's someone's front
+        // door. Rounding here rather than at the Firestore write also means the pin the user
+        // watches land is exactly the point that gets stored, with nothing more precise held
+        // anywhere in between.
+        userLocation = roundCoords(await locationPromise);
         // Waiting for moveend (rather than firing flyTo and moving on) is what makes this
         // genuinely visible -- the camera settling on the pin is the confirmation, seen before
         // anything else starts competing for attention.
