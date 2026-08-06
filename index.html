@@ -4221,8 +4221,16 @@
         resetRecordLabel();
       }
     });
+    // Computed up front, before anything is drawn. It's a local decode with no network in it
+    // (see the Promise.all below, which used to own it), and it's what gives each memo its own
+    // dot print -- running it inside that batch meant the first two renders had no envelope yet
+    // and fell back to a generic full grid, so the card only became "itself" after publishing.
+    const acousticFeatures = await analyzeAcousticFeatures(blob).catch(() => null);
+    const memoEnvelope = acousticFeatures ? acousticFeatures.energyEnvelope : null;
+    session.acousticFeatures = acousticFeatures;
+
     popup.setHTML(popupHTML({ audioURL, language: '...', loading: '🧠 analyzing...' }));
-    mountMemoCanvas(popup, audioURL, '...');
+    mountMemoCanvas(popup, audioURL, '...', memoEnvelope);
     marker.togglePopup();
 
     try {
@@ -4245,7 +4253,7 @@
       }
 
       popup.setHTML(popupHTML({ audioURL, language, languageMix, loading: '🎙️ measuring accent + content...' }));
-      mountMemoCanvas(popup, audioURL, language);
+      mountMemoCanvas(popup, audioURL, language, memoEnvelope);
 
       recordLabel.textContent = '🎙️ measuring accent + content...';
       // Five independent real signals — run concurrently instead of back to back. Each of these
@@ -4254,9 +4262,11 @@
       // The four model-based calls are skipped entirely when no real speech was detected —
       // acousticFeatures still runs regardless, since it's local/free and still wanted for the
       // dot-grid pattern (a silent clip just ends up with a near-zero energy envelope, honestly).
-      const [accentAnalysis, acousticFeatures, classification, embedding, hateSpeechCheck] = await Promise.all([
+      // acousticFeatures is no longer in this batch -- it already ran above, before the first
+      // paint, so the dot print exists from the start. Recomputing it here would just decode the
+      // same audio twice.
+      const [accentAnalysis, classification, embedding, hateSpeechCheck] = await Promise.all([
         noSpeechDetected ? Promise.resolve(null) : analyzeAccent(blob, language),
-        analyzeAcousticFeatures(blob),
         noSpeechDetected ? Promise.resolve(null) : classifySpectrums(text),
         noSpeechDetected ? Promise.resolve(null) : getEmbedding(text),
         noSpeechDetected ? Promise.resolve(null) : checkHateSpeech(text)
@@ -4284,7 +4294,7 @@
       // Pass the envelope here too: it's resolved by now, and without it the review card fell back
       // to the no-envelope path and rendered a generic full grid -- so a memo only got its own
       // audio-derived print after publishing, when it should have it from the first render.
-      mountMemoCanvas(popup, audioURL, language, acousticFeatures ? acousticFeatures.energyEnvelope : null);
+      mountMemoCanvas(popup, audioURL, language, memoEnvelope);
       resetRecordLabel();
 
     } catch(e) {
@@ -4295,7 +4305,7 @@
         audioURL, language: session.language, accentAnalysis: null,
         extraContent: publishPanelHTML(generateRandomUsername(), sessionId)
       }));
-      mountMemoCanvas(popup, audioURL, 'unknown');
+      mountMemoCanvas(popup, audioURL, 'unknown', memoEnvelope);
       resetRecordLabel();
     }
   }
@@ -4691,23 +4701,58 @@
     // pathologically short viewports; bestSide is the real physical constraint.
     const hardCeiling = Math.max(effectiveBottom - viewTop - clearance, 200);
     const bestSide = Math.max(spaceAbove, spaceBelow);
-    const available = Math.max(Math.min(bestSide, hardCeiling), 200);
+    let available = Math.max(Math.min(bestSide, hardCeiling), 200);
 
     // Only cap height if the content genuinely doesn't fit. Measure its real, unclamped height
     // first (the browser already has the full content in the DOM at this point) — everything here
     // runs synchronously before the next paint, so there's no visible flash of the uncapped state.
     const complex = content.querySelector('.memo-popup-complex');
     content.style.maxHeight = 'none';
-    if (complex) complex.style.maxHeight = 'none';
+    if (complex) { complex.style.maxHeight = 'none'; complex.style.zoom = ''; }
     const naturalHeight = content.scrollHeight;
 
+    // Mapbox's auto anchor only ever picks top or bottom, so the card gets whatever room lies on
+    // ONE side of the marker -- and recording centres the map on the memo, which is precisely the
+    // worst case: half a screen, while the other half sits empty. Anchoring to the marker's side
+    // instead makes Mapbox centre the card vertically on it, so both halves count. Measured on a
+    // 1440x800 laptop that's 330px -> 660px, i.e. the full card at full size instead of 56% of it.
+    //
+    // Only used when the card truly doesn't fit above or below AND there's horizontal room for it,
+    // so every popup that already fits keeps its familiar placement and tip.
+    let anchor;
     if (naturalHeight > available) {
-      // No arbitrary ceiling here any more. It used to clamp to min(available, 560), so a card
-      // needing ~700px was cut to 560 and scrolled even when ~900px was genuinely free -- the
-      // card should use the room it actually has and only ever scroll as a last resort.
-      const capped = available + 'px';
-      content.style.maxHeight = capped;
-      if (complex) complex.style.maxHeight = capped;
+      const sideRoom = Math.max(Math.min(
+        2 * Math.min(markerScreenY - viewTop, effectiveBottom - markerScreenY),
+        effectiveBottom - viewTop - 16), 200);
+      if (sideRoom > available) {
+        const markerScreenX = mapRect.left + point.x;
+        const cardWidth = content.offsetWidth;
+        const gap = 28; // the popup's own offset plus a little air
+        // 'left'/'right' name the popup's edge that touches the marker, so anchor 'left' puts the
+        // card to the marker's right.
+        if (window.innerWidth - markerScreenX - gap >= cardWidth) anchor = 'left';
+        else if (markerScreenX - gap >= cardWidth) anchor = 'right';
+        if (anchor) available = sideRoom;
+      }
+    }
+    // Assigned even when undefined: v3 leaves options.anchor alone when it auto-picks, but clearing
+    // it explicitly means a popup that once needed a side anchor goes back to the normal top/bottom
+    // placement as soon as it fits again (after a pan, a resize, or a shorter card).
+    popup.options.anchor = anchor;
+
+    // Shrink to fit rather than clip. Capping max-height cut the card off -- and once the
+    // scrollbar was hidden, the cut-off part became unreachable entirely. Scaling keeps 100% of the
+    // card visible with nothing to scroll, which is the actual requirement. With the side anchor
+    // above doing the heavy lifting, this now only bites on genuinely tiny viewports.
+    //
+    // zoom, not transform: scale -- zoom shrinks the element's LAYOUT box too, so Mapbox keeps
+    // positioning the popup against its real size and no empty gap appears around it.
+    if (naturalHeight > available && complex) {
+      // 0.7 floor so text never shrinks into illegibility; below that the (invisible) scroll
+      // remains as a last resort, which needs a viewport shorter than anything real.
+      const fit = Math.max(0.7, Math.min(1, available / naturalHeight));
+      complex.style.zoom = fit;
+      if (naturalHeight * fit > available) content.style.maxHeight = available + 'px';
     }
     // else: leave both at 'none' — the card renders at its natural height, fully visible, nothing
     // to scroll, which is the common case for ordinary memo content.
