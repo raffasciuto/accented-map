@@ -550,11 +550,19 @@
          THIS element is the one that scrolls/clips, it needs its own uncancelled buffer room here
          or they get sliced off by exactly their own negative offset. */
       padding-top: 16px;
+      /* Same reasoning for the bottom: .memo-play-btn hangs 16px below the card (bottom: -16px),
+         which is 15px of real, permanent overflow -- enough to make this element scrollable at
+         ANY size, including the tiny still-analysing card where there is nothing to scroll.
+         Measured: 208 client vs 223 scroll height, dropping to 208/208 with the button hidden.
+         This lived only in the 480px block before, which is exactly why phones were fine and
+         desktop always showed a bar. */
+      padding-bottom: 20px;
     }
-    .memo-popup-complex::-webkit-scrollbar { width: 5px; }
-    .memo-popup-complex::-webkit-scrollbar-track { background: transparent; }
-    .memo-popup-complex::-webkit-scrollbar-thumb { background: rgba(201,37,5,0.4); border-radius: 999px; }
-    .memo-popup-complex { scrollbar-width: thin; scrollbar-color: rgba(201,37,5,0.4) transparent; }
+    /* No visible scrollbar, ever. With the padding above the card no longer overflows at all, so
+       this is a guarantee rather than a workaround: the element stays scrollable as a last-resort
+       safety net on some pathologically short viewport, but never paints a bar over the design. */
+    .memo-popup-complex::-webkit-scrollbar { width: 0; height: 0; }
+    .memo-popup-complex { scrollbar-width: none; }
     .memo-popup-complex .memo-popup-close { position: absolute; top: 6px; right: 4px; z-index: 6; }
 
     /* Same liquid-glass recipe as .glass-border minus the animated stroke (explicitly removed
@@ -1474,7 +1482,8 @@
          behind the loading-state "scrollable" report: the button's own bottom edge sat 15px past
          .memo-popup-complex's clipped edge, on the nose. padding-bottom gives it real room, same
          as padding-top does on the other side, instead of hiding the shortfall. */
-      .memo-popup-complex { max-height: 78vh; padding-bottom: 20px; }
+      /* padding-bottom now lives on the base rule -- it was never desktop-specific. */
+      .memo-popup-complex { max-height: 78vh; }
       .memo-audio-wrap { height: 90px; }
       .memo-bottom-row { margin-top: 14px; }
       .memo-lang-card, .memo-pred-card { padding: 12px 14px; }
@@ -4611,8 +4620,18 @@
 
     btn.addEventListener('click', async () => {
       if (audio.paused) {
-        if (!realGraphFailed) buildRealGraph();
-        if (audioCtx && audioCtx.state === 'suspended') await audioCtx.resume();
+        // buildRealGraph() is deliberately NOT called any more, which is why analyser stays
+        // undefined and the branch below always takes loopFake.
+        //
+        // createMediaElementSource permanently reroutes the element's output into the audio
+        // graph. If that graph produces no sound on a given device there is no way back: setting
+        // realGraphFailed and switching to loopFake only changes the *animation*, never the audio
+        // path -- so playback stays silent while the dots still move, which is exactly what was
+        // reported (silent before publishing, audible after). Published memos never build the
+        // graph, because the bucket's missing CORS headers trip the 'error' handler first, and
+        // those play fine on the same device. Making every memo use that same plain-element path
+        // is what guarantees sound; it costs nothing visible, since the analyser only ever ran on
+        // the pre-publish card anyway -- every memo on the map already shows the simulated motion.
         try {
           await audio.play();
         } catch (e) {
