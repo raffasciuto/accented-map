@@ -3,7 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Heat Map</title>
+  <title>Overheard</title>
+  <!-- The app icon, dot-matrix like everything else. SVG rather than a fixed-size .ico so the
+       browser rasterises it at whatever it needs -- 32 device px in a retina tab, which lands one
+       grid dot per pixel, and larger again in bookmarks. Declaring it also stops the browser
+       falling back to requesting /favicon.ico, which was 404ing. -->
+  <link rel="icon" type="image/svg+xml" href="/appicon.svg">
   <!-- TEMPORARY: on-page mobile debug console (eruda) for diagnosing a live-only recording bug
        that doesn't reproduce locally. Remove once diagnosed -- not meant to ship long-term. -->
   <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
@@ -1064,6 +1069,12 @@
       margin: 0 auto 28px;
       padding: 24px 26px 22px;
       text-align: left;
+      /* .glass-border's external layer (0 20px 50px rgba(0,0,0,0.5)) reads as depth over a light
+         backdrop, but this page is #181818 -- a half-black blur on near-black doesn't say "lifted",
+         it just leaves a murky halo around the card. The three insets never extend past the box
+         and carry the whole glass treatment on their own, so only the outer layer goes. Same call,
+         same values, as .memo-glass and .about-story-panel below. */
+      box-shadow: inset 0 1px 1px rgba(255,255,255,0.25), inset 0 -8px 16px rgba(0,0,0,0.3), inset 0 0 0 1px rgba(255,255,255,0.05);
     }
     .about-globe-intro .about-globe-intro-lead {
       max-width: none;
