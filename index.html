@@ -771,7 +771,11 @@
     }
     #tour-popup.visible { opacity: 1; pointer-events: auto; }
     #tour-popup .tour-step-label { font-size: 10.5px; color: #C92505; font-weight: 400; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 10px; }
-    #tour-popup p { font-size: 13px; line-height: 1.6; color: #e8e6df; margin-bottom: 18px; }
+    /* Paragraphs within a step sit closer together than the step sits to its button -- at 18px
+       apiece a three-paragraph step stacked into a popup taller than a phone screen. The 18px gap
+       before the button is preserved on the last one, so single-paragraph steps look unchanged. */
+    #tour-popup p { font-size: 13px; line-height: 1.6; color: #e8e6df; margin-bottom: 10px; }
+    #tour-popup #tour-step-text p:last-child { margin-bottom: 18px; }
     #tour-popup-next {
       display: block; margin-left: auto;
       padding: 10px 22px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.2);
@@ -1051,18 +1055,44 @@
     }
     #about-country-info-scroll .country-info-src-detail a:hover { color: #cfcdc6; }
 
-    /* Two classes deliberately (not one) — .stub-view p (line 370) is a class+type selector,
-       higher specificity than a single class, so it was silently winning over font-size/color/
-       max-width here regardless of what this rule said. */
-    .about-hero .about-globe-footnote {
-      max-width: 560px;
-      margin: 0 auto 10px;
-      font-size: 9px;
-      line-height: 1.6;
-      color: #77756e;
-      letter-spacing: 0.02em;
-      text-align: center;
+    /* Every p rule below needs two classes, not one — .stub-view p (line 391) is a class+type
+       selector and outranks any single class, so a lone .about-globe-intro-lead would silently
+       lose its font-size/color and inherit that rule's 380px max-width. Same trap the old
+       .about-hero .about-globe-footnote rule existed to work around. */
+    .about-globe-intro {
+      max-width: 620px;
+      margin: 0 auto 28px;
+      padding: 24px 26px 22px;
+      text-align: left;
     }
+    .about-globe-intro .about-globe-intro-lead {
+      max-width: none;
+      margin-bottom: 12px;
+      font-size: 14px;
+      line-height: 1.65;
+      color: #f2f0ea;
+    }
+    .about-globe-intro .about-globe-intro-body {
+      max-width: none;
+      margin-bottom: 4px;
+      font-size: 12.5px;
+      line-height: 1.7;
+      color: #b9b7b0;
+    }
+    /* .about-story-detail p wins font-size/colour over .stub-view p (equal specificity, declared
+       later) but never sets max-width, so that rule's 380px still lands. Harmless in the narrow
+       story panels; inside this wider card it would leave the methodology text visibly indented
+       against the lead and body above it. */
+    .about-globe-intro .about-story-detail p { max-width: none; }
+    .about-globe-intro .about-story-more-wrap { margin-top: 12px; }
+    /* Stacked rather than inline so a long citation can't push the pill wider than the card. */
+    .about-globe-intro .about-globe-intro-links a {
+      display: block;
+      color: #9a9891;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+    .about-globe-intro .about-globe-intro-links a:hover { color: #cfcdc6; }
 
     /* ---------- Scroll-driven data story ---------- */
     /* The outer section is tall only to create scroll distance (one viewport per reveal); the
@@ -1589,14 +1619,20 @@
     <button id="info-x-btn" class="country-info-close">✕</button>
 
     <p style="font-size:16px;font-weight:400;color:#f2f0ea;line-height:1.5;letter-spacing:0.04em;text-transform:uppercase;margin-bottom:16px;">
-      Want to experience the hot take map?
+      Are you Overheard?
+    </p>
+    <!-- Two paragraphs where there was one: the first line is the invitation, the second is what
+         it's for. Same 12.5px body style on both; only the last one carries the 28px gap that
+         separates the block from the button, so the pair reads as one thought. -->
+    <p style="font-size:12.5px;color:#cfcdc6;line-height:1.6;margin-bottom:10px;">
+      Let's test it: speak your mind in your mother tongue.
     </p>
     <p style="font-size:12.5px;color:#cfcdc6;line-height:1.6;margin-bottom:28px;">
-      Be aware: your way of speaking will be judged and accents measured.
+      Help build a map of how AI connects language with human experience.
     </p>
 
     <button id="info-close-btn" style="display:block;margin-left:auto;padding:12px 24px;border-radius:999px;border:1px solid rgba(255,255,255,0.2);background:transparent;color:#f2f0ea;font-family:inherit;font-size:12.5px;font-weight:400;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;transition:background .15s ease;">
-      I'm up for it →
+      I'm in →
     </button>
   </div>
 </div>
@@ -1605,8 +1641,10 @@
 <div id="tour-dim"></div>
 <div id="tour-popup" class="glass-border">
   <button id="tour-skip-btn" class="country-info-close">✕</button>
-  <div class="tour-step-label" id="tour-step-label">1 / 3</div>
-  <p id="tour-step-text"></p>
+  <div class="tour-step-label" id="tour-step-label">1 / 4</div>
+  <!-- A container, not the paragraph itself: steps carry one or more paragraphs, each appended as
+       its own <p> so #tour-popup p keeps styling them exactly as before. -->
+  <div id="tour-step-text"></div>
   <div id="tour-example-popup"></div>
   <button id="tour-popup-next">Next →</button>
 </div>
@@ -1634,9 +1672,9 @@
   <div class="app-menu-content-wrap"><div class="app-menu-content-inner">
     <button class="about-menu-item side-menu-item active" data-view="map">Explore</button>
     <button class="about-menu-item side-menu-item" id="menu-filter-btn" data-view="archive">Filter</button>
-    <button class="about-menu-item side-menu-item" data-view="about">Read more</button>
+    <button class="about-menu-item side-menu-item" data-view="about">Learn</button>
     <button class="about-menu-record" id="record-btn">
-      <span id="record-label"><span class="nav-label-full">share your hot take</span><span class="nav-label-short">Record</span></span>
+      <span id="record-label"><span class="nav-label-full">share your hot take</span><span class="nav-label-short">Hot take</span></span>
       <span class="about-menu-record-dot"></span>
     </button>
   </div></div>
@@ -1662,7 +1700,23 @@
 <div id="about-view" class="stub-view">
   <div class="about-scroll">
     <div class="about-hero">
-      <p class="about-globe-footnote">Percentages reflect share of web content (used as proxy for AI training data), not population of speakers — a known limitation of this method. Opacity scale is logarithmic.</p>
+      <!-- Was a 9px footnote floating well above the globe, which read as fine print and never
+           said what the globe was for. Same expandable-pill pattern as every "Sources ↗" on this
+           page (.about-story-more-wrap + toggleStorySources), so nothing new is introduced. -->
+      <div class="about-globe-intro glass-border">
+        <p class="about-globe-intro-lead">Why does this matter? AI learns mostly from what's already online — and the web doesn't represent every language equally.</p>
+        <p class="about-globe-intro-body">Below: each country's share of web content, used as a proxy for training data. Brighter = more represented. (Opacity scale is logarithmic — small differences in brightness can mean large differences in share.)</p>
+        <div class="about-story-more-wrap">
+          <button class="about-story-more" onclick="toggleStorySources(this)" aria-expanded="false">Methodology ↗</button>
+          <div class="about-story-detail" hidden>
+            <p>Percentages reflect share of web content, used as a proxy for AI training data — not population of speakers. This is a known limitation of the method.</p>
+            <p class="about-globe-intro-links">
+              <a href="https://commoncrawl.github.io/cc-crawl-statistics/plots/languages" target="_blank" rel="noopener">Common Crawl CC-MAIN-2026-30</a>
+              <a href="https://w3techs.com/technologies/overview/content_language" target="_blank" rel="noopener">W3Techs, Aug 2026</a>
+            </p>
+          </div>
+        </div>
+      </div>
       <div class="about-globe-wrap">
         <!-- Mapbox requires this container to stay empty at construction time (a non-empty
              container triggers its own "interactivity negatively impacted" warning) -->
@@ -1712,15 +1766,15 @@
           </div>
 
           <div class="about-story-panel" data-reveal="3">
-            <p class="about-story-stat">Your voice matters here — but only for as long as this project exists.</p>
-            <p class="about-story-body">Recordings are stored securely, used only for this thesis, and permanently deleted afterward. Nothing is sold, shared, or used to train any external model.</p>
+            <p class="about-story-stat">We're keeping your hot take for as long as this project needs it — not forever.</p>
+            <p class="about-story-body">Recordings are stored securely, used only for this thesis, and permanently deleted once it concludes. Nothing is sold, shared, or used to train any external model.</p>
             <div class="about-story-more-wrap">
               <button class="about-story-more" id="story-privacy-toggle" aria-expanded="false">
                 <span class="pixel-icon pixel-icon--sm pixel-icon--btn" data-icon="question"></span>
                 <span>How your data is handled</span>
               </button>
               <div class="about-story-detail" id="story-privacy-detail" hidden>
-                <p>Recordings are uploaded to a private Firebase Storage bucket and never made public beyond this map. Each memo is tied to a randomly generated username, not to your identity — no account, no email, no device fingerprint is collected.</p>
+                <p>Recordings are uploaded to a private Firebase Storage bucket and never made public beyond this map. Each memo is tied to a randomly generated username, not your identity — no account, no email, no device fingerprint is collected.</p>
                 <p>Location is stored only as the approximate coordinates you consented to share when recording, used solely to place the dot on the map.</p>
                 <p>The transcript and audio are sent once to language-analysis models to produce the language and classification results shown in your memo card. They are not retained by those services for training.</p>
                 <p>When this thesis project concludes, the entire database and storage bucket are deleted in full.</p>
@@ -1733,11 +1787,11 @@
     </section>
 
     <div class="about-contact">
-      <span class="about-contact-label">Got extra questions or opinions?</span>
+      <span class="about-contact-label">Got questions, thoughts, or want your memo removed?</span>
       <!-- Was a mailto: link with the owner's real address sitting in the markup for any scraper to
            read. Netlify captures this form's submissions instead and forwards them on, so the
            destination address lives in the Netlify dashboard rather than anywhere in this file. -->
-      <button class="contact-btn glass-border" id="contact-toggle" aria-expanded="false" aria-controls="contact-form-wrap">Contact the owner <span>→</span></button>
+      <button class="contact-btn glass-border" id="contact-toggle" aria-expanded="false" aria-controls="contact-form-wrap">Reach out <span>→</span></button>
 
       <div class="glass-border" id="contact-form-wrap" hidden>
         <form name="contact" method="POST" data-netlify="true" data-netlify-honeypot="bot-field" id="contact-form">
@@ -1975,18 +2029,38 @@
   const tourExamplePopup = document.getElementById('tour-example-popup');
   const tourNextBtn = document.getElementById('tour-popup-next');
   const TOUR_DOT_LNGLAT = [13.405, 52.52]; // same Berlin fallback point used elsewhere in the app
+  // `text` is an array of paragraphs, not a string -- steps 1 and 2 each say more than one thing,
+  // and running them together as a single block buried the actual instruction in the middle of it.
+  // `example` is explicit rather than inferred from `spotlight: 'none'`: step 4 also has no
+  // spotlight but must NOT show the sample card, which is the whole reason step 3 exists.
   const TOUR_STEPS = [
     {
       spotlight: 'dot',
-      text: 'The world is filled with loud voices. You can listen the stories of other people all over the world, and show your feelings toward them.'
+      text: [
+        'This is a live Archive. Scroll the world, listen to hot takes from anywhere, react to what you hear.',
+        "Heads up: not everything will be in a language you understand — that's kind of the point."
+      ]
     },
     {
       spotlight: 'record',
-      text: 'Everyone has the power to speak. Use yours. To record, maintain pressed the recording button while speaking. Feel free to speak on you mother tongue.'
+      text: [
+        "To record, allow microphone access. You'll also be asked for your location — you can allow it, pin your memo yourself, or just go with a default nearby spot.",
+        "A hot take is yours: an opinion, unpopular or not, that's really you talking.",
+        "Hold the button to record, and speak in whatever language is actually yours. That's the point — we're gathering worldviews in the language they were born in."
+      ]
     },
     {
       spotlight: 'none',
-      text: 'You can decide if you want to publish or not. When published, the memos compile in our Archive, that clumps assumptions related to ways of speaking, languages, accents and experiences.'
+      example: true,
+      text: [
+        "Here's what happens next: AI classifies your memo, you'll see how. Before it's public, you choose your username and whether to publish at all."
+      ]
+    },
+    {
+      spotlight: 'none',
+      text: [
+        'Published memos join the Archive — a growing map of how AI connects different languages and worldviews. This is a shared experiment. The more voices, the clearer the picture.'
+      ]
     }
   ];
 
@@ -2055,9 +2129,15 @@
   function renderTourStep(i) {
     const step = TOUR_STEPS[i];
     tourStepLabel.textContent = `${i + 1} / ${TOUR_STEPS.length}`;
-    tourStepText.textContent = step.text;
+    // textContent per paragraph rather than innerHTML on the joined string: the copy contains
+    // apostrophes and em dashes, and there's no reason for this path to be able to inject markup.
+    tourStepText.replaceChildren(...step.text.map(t => {
+      const p = document.createElement('p');
+      p.textContent = t;
+      return p;
+    }));
     tourExamplePopup.innerHTML = '';
-    tourNextBtn.textContent = (i === TOUR_STEPS.length - 1) ? 'Start exploring →' : 'Next →';
+    tourNextBtn.textContent = (i === TOUR_STEPS.length - 1) ? 'Enter the Map →' : 'Next →';
 
     if (step.spotlight === 'dot') {
       const wrap = document.createElement('div');
@@ -2078,7 +2158,10 @@
       window.addEventListener('resize', tourResizeHandler);
     } else {
       setTourHole(null);
-      renderTourExamplePopup();
+      // Only the step that's actually about the memo card shows one. The closing step has no
+      // spotlight either, but it's a summary -- repeating the sample card under it would read as
+      // the tour having got stuck.
+      if (step.example) renderTourExamplePopup(); else centerTourPopup();
     }
   }
 
@@ -2174,7 +2257,7 @@
   // text — every other pipeline stage below sets a transient status string as plain text, which
   // is fine since those are short-lived and don't need a mobile-specific short form.
   function resetRecordLabel() {
-    recordLabel.innerHTML = '<span class="nav-label-full">share your hot take</span><span class="nav-label-short">Record</span>';
+    recordLabel.innerHTML = '<span class="nav-label-full">share your hot take</span><span class="nav-label-short">Hot take</span>';
     recordFlowBusy = false;
     btn.classList.remove('busy');
     refreshMenuForceExpanded();
@@ -4871,7 +4954,7 @@
         ${classificationRows(classification)}
         <div class="memo-side-tabs">
           <button class="memo-tab memo-tab--info-link" onclick="closeMemoPopup(); setActiveView('about');">
-            <span class="pixel-icon pixel-icon--sm">${pixelIconSVG(PIXEL_ICON_CELLS.question)}</span><span class="memo-tab-expand-text">are u triggered by this?</span>
+            <span class="pixel-icon pixel-icon--sm">${pixelIconSVG(PIXEL_ICON_CELLS.question)}</span><span class="memo-tab-expand-text">the data behind this</span>
           </button>
         </div>
       </div>` : '';
