@@ -927,6 +927,12 @@
       50% { transform: scale(1.35); box-shadow: 0 0 0 1.5px rgba(201,37,5,0.8), 0 0 10px 4px rgba(201,37,5,0.35); }
     }
     .about-menu-record-dot {
+      /* The pulse scales to 1.35 and paints a 10px-blur/4px-spread glow, and both
+         .app-menu-content-wrap and .app-menu-content-inner are overflow:hidden (they drive the
+         collapse animation), so without room to its right the glow is clipped flat. This margin
+         lives inside the clip, so it reads as the pill's own right-side breathing room. It was
+         previously only in the 480px block, which is why the clipping came back on desktop. */
+      margin-right: 16px;
       width: 10px; height: 10px;
       border-radius: 50%;
       background: #C92505;
@@ -4266,7 +4272,10 @@
         ? moderationBlockedHTML(sessionId)
         : publishPanelHTML(generateRandomUsername(), sessionId);
       popup.setHTML(popupHTML({ audioURL, language, languageMix, classification, accentAnalysis, accentConfidencePct, extraContent }));
-      mountMemoCanvas(popup, audioURL, language);
+      // Pass the envelope here too: it's resolved by now, and without it the review card fell back
+      // to the no-envelope path and rendered a generic full grid -- so a memo only got its own
+      // audio-derived print after publishing, when it should have it from the first render.
+      mountMemoCanvas(popup, audioURL, language, acousticFeatures ? acousticFeatures.energyEnvelope : null);
       resetRecordLabel();
 
     } catch(e) {
@@ -4311,7 +4320,8 @@
           classification: session.classification, accentAnalysis: session.accentAnalysis, accentConfidencePct: session.accentConfidencePct,
           extraContent: publishPanelHTML(username, sessionId, "Couldn't publish — check your connection and try again.")
         }));
-        mountMemoCanvas(session.popup, session.audioURL, session.language);
+        mountMemoCanvas(session.popup, session.audioURL, session.language,
+          session.acousticFeatures ? session.acousticFeatures.energyEnvelope : null);
         return;
       }
 
@@ -4673,7 +4683,10 @@
     const naturalHeight = content.scrollHeight;
 
     if (naturalHeight > available) {
-      const capped = Math.min(available, 560) + 'px';
+      // No arbitrary ceiling here any more. It used to clamp to min(available, 560), so a card
+      // needing ~700px was cut to 560 and scrolled even when ~900px was genuinely free -- the
+      // card should use the room it actually has and only ever scroll as a last resort.
+      const capped = available + 'px';
       content.style.maxHeight = capped;
       if (complex) complex.style.maxHeight = capped;
     }
